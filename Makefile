@@ -1,10 +1,14 @@
 all: compile link
 
 compile:
-	g++ -Isrc/include -c main.cpp
+	g++ -Isfml_lib/include -c src/main.cpp -o obj/main.o
 
 link:
-	g++ main.o -o main -Lsrc/lib -lsfml-graphics -lsfml-window -lsfml-system
+	g++ obj/main.o -o bin/main.exe -Lsfml_lib/lib -lsfml-graphics -lsfml-window -lsfml-system
+
+clean:
+	rm obj/*.*
+	rm bin/main.exe
 
 run:
-	main.exe
+	bin/main.exe
