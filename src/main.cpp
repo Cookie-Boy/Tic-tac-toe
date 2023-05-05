@@ -2,6 +2,9 @@
 #include <iostream>
 #include <time.h>
 
+#define PLAYER_WON 1
+#define BOT_WON 2
+
 using namespace sf;
 using namespace std;
 
@@ -52,6 +55,143 @@ void smartStep(Init &player, Init &bot)
     bot.cellMode[random] = true;
 }
 
+int checkHorizontal(Init &player, Init &bot, Sprite &line)
+{
+    int playerCounter = 0, botCounter = 0;
+    for (int i = 0; i < 7; i += 3)
+    {
+        for (int j = i; j < (i + 3); j++)
+        {
+            if (player.cellMode[j])
+                playerCounter++;
+            else if (bot.cellMode[j])
+                botCounter++;
+
+            if (playerCounter == 3)
+            {
+                line.setTextureRect(IntRect(0, 0, 600, 10));
+                line.setRotation(0);
+                int distance = ((i / 3) * 200) + 100;
+                line.setPosition(0, distance);
+                return PLAYER_WON;
+            }
+            else if (botCounter == 3)
+            {
+                line.setTextureRect(IntRect(0, 0, 600, 10));
+                line.setRotation(0);
+                int distance = ((i / 3) * 200) + 100;
+                line.setPosition(0, distance);
+                return BOT_WON;
+            }
+        }
+        playerCounter = 0;
+        botCounter = 0;
+    }
+    return 0;
+}
+
+int checkVertical(Init &player, Init &bot, Sprite &line)
+{
+    int playerCounter = 0, botCounter = 0;
+    for (int i = 0; i < 3; i++)
+    {
+        for (int j = i; j < (i + 7); j += 3)
+        {
+            if (player.cellMode[j])
+                playerCounter++;
+            else if (bot.cellMode[j])
+                botCounter++;
+
+            if (playerCounter == 3)
+            {
+                line.setTextureRect(IntRect(0, 0, 600, 10));
+                line.setRotation(90);
+                int distance = (i * 200) + 105;
+                line.setPosition(distance, 0);
+                return PLAYER_WON;
+            }
+            else if (botCounter == 3)
+            {
+                line.setTextureRect(IntRect(0, 0, 600, 10));
+                line.setRotation(90);
+                int distance = (i * 200) + 105;
+                line.setPosition(distance, 0);
+                return BOT_WON;
+            }
+        }
+        playerCounter = 0;
+        botCounter = 0;
+    }
+    return 0;
+}
+
+int checkDiagonal(Init &player, Init &bot, Sprite &line)
+{
+    int playerCounter = 0, botCounter = 0;
+
+    for (int i = 0; i < 9; i += 4)
+    {
+        if (player.cellMode[i])
+            playerCounter++;
+        else if (bot.cellMode[i])
+            botCounter++;
+
+        if (playerCounter == 3)
+        {
+            line.setTextureRect(IntRect(0, 10, 600, 600));
+            line.setRotation(0);
+            line.setPosition(0, 0);
+            return PLAYER_WON;
+        }
+        else if (botCounter == 3)
+        {
+            line.setTextureRect(IntRect(0, 10, 600, 600));
+            line.setRotation(0);
+            line.setPosition(0, 0);
+            return BOT_WON;
+        }
+    }
+
+    playerCounter = 0;
+    botCounter = 0;
+
+    for (int i = 2; i < 7; i += 2)
+    {
+        if (player.cellMode[i])
+            playerCounter++;
+        else if (bot.cellMode[i])
+            botCounter++;
+
+        if (playerCounter == 3)
+        {
+            line.setTextureRect(IntRect(600, 10, -600, 600));
+            return PLAYER_WON;
+        }
+        else if (botCounter == 3)
+        {
+            line.setTextureRect(IntRect(600, 10, -600, 600));
+            return BOT_WON;
+        }
+    }
+    return 0;
+}
+
+int checkResult(Init &player, Init &bot, Sprite &line)
+{
+    if (checkHorizontal(player, bot, line) || checkVertical(player, bot, line) || checkDiagonal(player, bot, line))
+        return true;
+    return false;
+}
+
+void clearCells(Init &player, Init &bot)
+{
+    for (int i = 0; i < 9; i++)
+    {
+        player.cellMode[i] = false;
+        bot.cellMode[i] = false;
+    }
+}
+
 int main(int argc, char *argv[])
 {
     RenderWindow window(VideoMode(600, 600), "Tic-tac-toe"); // Создаем окно для игры
@@ -65,11 +205,15 @@ int main(int argc, char *argv[])
         choice[i].setPosition(50 + 300 * i, 180);
     }
 
-    Texture bg;
-    bg.loadFromFile("img/background.png");
-    Sprite background(bg);
+    Texture backgroundTexture;
+    backgroundTexture.loadFromFile("img/background.png");
+    Sprite background(backgroundTexture);
 
-    bool isMenu = true;
+    Texture lineTexture;
+    lineTexture.loadFromFile("img/line.png");
+    Sprite line(lineTexture);
+
+    bool onMenu = true, onGame = false, isEnd = false;
     int playerCharacter = 0; // 0 - крестик, 1 - нолик
     int botCharacter = 0;
     Init player(figures), bot(figures);
@@ -87,7 +231,7 @@ int main(int argc, char *argv[])
 
             if (Mouse::isButtonPressed(Mouse::Left))
             {
-                if (isMenu)
+                if (onMenu)
                 {
                     for (int i = 0; i < 2; i++)
                     {
@@ -95,11 +239,12 @@ int main(int argc, char *argv[])
                         {
                             playerCharacter = i;
                             botCharacter = !playerCharacter;
-                            isMenu = false;
+                            onMenu = false;
+                            onGame = true;
                         }
                     }
                 }
-                else
+                else if (onGame && !isEnd)
                 {
                     for (int i = 0; i < 9; i++)
                     {
@@ -108,10 +253,26 @@ int main(int argc, char *argv[])
                             if (!player.cellMode[i] && !bot.cellMode[i])
                             {
                                 player.cellMode[i] = true;
+                                if (checkResult(player, bot, line))
+                                {
+                                    isEnd = true;
+                                    break;
+                                }
                                 smartStep(player, bot);
+                                if (checkResult(player, bot, line))
+                                {
+                                    isEnd = true;
+                                }
                             }
                         }
                     }
+                }
+                else if (isEnd)
+                {
+                    isEnd = false;
+                    onGame = false;
+                    onMenu = true;
+                    clearCells(player, bot);
                 }
             }
         }
@@ -123,12 +284,12 @@ int main(int argc, char *argv[])
 
         window.clear(Color::White);
 
-        if (isMenu)
+        if (onMenu)
         {
             for (int i = 0; i < 2; i++)
                 window.draw(choice[i]);
         }
-        else
+        else if (onGame)
         {
             for (int i = 0; i < 9; i++)
                 if (player.cellMode[i])
@@ -137,6 +298,9 @@ int main(int argc, char *argv[])
                     window.draw(bot.cells[i]);
 
             window.draw(background);
+
+            if (isEnd)
+                window.draw(line);
         }
 
         window.display();
