@@ -3,6 +3,7 @@
 #include <time.h>
 
 using namespace sf;
+using namespace std;
 
 class Init
 {
@@ -25,9 +26,31 @@ public:
     void update(int &figure)
     {
         for (int i = 0; i < 9; i++)
-            cells[i].setTextureRect(IntRect(200 * (figure - 1), 0, 200, 200));
+            cells[i].setTextureRect(IntRect(200 * figure, 0, 200, 200));
     }
 };
+
+void displayButtonMode(Sprite *choice, Vector2i pos)
+{
+    for (int i = 0; i < 2; i++)
+    {
+        if (choice[i].getGlobalBounds().contains(pos.x, pos.y))
+            choice[i].setTextureRect(IntRect(200 * i, 200, 200, 200));
+        else
+            choice[i].setTextureRect(IntRect(200 * i, 0, 200, 200));
+    }
+}
+
+void smartStep(Init &player, Init &bot)
+{
+    int random;
+    do
+    {
+        random = rand() % 9;
+    } while (player.cellMode[random] || bot.cellMode[random]);
+    
+    bot.cellMode[random] = true;
+}
 
 int main(int argc, char *argv[])
 {
@@ -46,8 +69,10 @@ int main(int argc, char *argv[])
     bg.loadFromFile("img/background.png");
     Sprite background(bg);
 
-    int result = 0; // 1 - крестик, 2 - нолик
-    Init player(figures);
+    bool isMenu = true;
+    int playerCharacter = 0; // 0 - крестик, 1 - нолик
+    int botCharacter = 0;
+    Init player(figures), bot(figures);
 
 
     while (window.isOpen())
@@ -62,12 +87,16 @@ int main(int argc, char *argv[])
 
             if (Mouse::isButtonPressed(Mouse::Left))
             {
-                if (result == 0)
+                if (isMenu)
                 {
                     for (int i = 0; i < 2; i++)
                     {
                         if (choice[i].getGlobalBounds().contains(mousePosition.x, mousePosition.y))
-                            result = i + 1;
+                        {
+                            playerCharacter = i;
+                            botCharacter = !playerCharacter;
+                            isMenu = false;
+                        }
                     }
                 }
                 else
@@ -75,24 +104,26 @@ int main(int argc, char *argv[])
                     for (int i = 0; i < 9; i++)
                     {
                         if (player.cells[i].getGlobalBounds().contains(mousePosition.x, mousePosition.y))
-                            player.cellMode[i] = true;
+                        {
+                            if (!player.cellMode[i] && !bot.cellMode[i])
+                            {
+                                player.cellMode[i] = true;
+                                smartStep(player, bot);
+                            }
+                        }
                     }
                 }
             }
         }
 
-        for (int i = 0; i < 2; i++)
-        {
-            if (choice[i].getGlobalBounds().contains(mousePosition.x, mousePosition.y))
-                choice[i].setTextureRect(IntRect(200 * i, 200, 200, 200));
-            else
-                choice[i].setTextureRect(IntRect(200 * i, 0, 200, 200));
-        }
+        displayButtonMode(choice, mousePosition);
 
-        player.update(result);
+        player.update(playerCharacter);
+        bot.update(botCharacter);
+
         window.clear(Color::White);
 
-        if (result == 0)
+        if (isMenu)
         {
             for (int i = 0; i < 2; i++)
                 window.draw(choice[i]);
@@ -102,6 +133,8 @@ int main(int argc, char *argv[])
             for (int i = 0; i < 9; i++)
                 if (player.cellMode[i])
                     window.draw(player.cells[i]);
+                else if (bot.cellMode[i])
+                    window.draw(bot.cells[i]);
 
             window.draw(background);
         }
