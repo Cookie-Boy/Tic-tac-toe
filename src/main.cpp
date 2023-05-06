@@ -1,6 +1,8 @@
 #include <SFML/Graphics.hpp>
 #include <iostream>
 #include <time.h>
+#include <locale.h>
+#include <windows.h>
 
 #define PLAYER_WON 1
 #define BOT_WON 2
@@ -11,7 +13,7 @@ using namespace std;
 class Init
 {
 public:
-    Sprite cells[9]; // Р’СЃРµРіРѕ 9 РєР»РµС‚РѕРє
+    Sprite cells[9]; // Всего 9 клеток
     bool cellMode[9];
 
     Init(Texture &image)
@@ -165,22 +167,19 @@ int checkDiagonal(Init &player, Init &bot, Sprite &line)
         if (playerCounter == 3)
         {
             line.setTextureRect(IntRect(600, 10, -600, 600));
+            line.setRotation(0);
+            line.setPosition(0, 0);
             return PLAYER_WON;
         }
         else if (botCounter == 3)
         {
             line.setTextureRect(IntRect(600, 10, -600, 600));
+            line.setRotation(0);
+            line.setPosition(0, 0);
             return BOT_WON;
         }
     }
     return 0;
-}
-
-int checkResult(Init &player, Init &bot, Sprite &line)
-{
-    if (checkHorizontal(player, bot, line) || checkVertical(player, bot, line) || checkDiagonal(player, bot, line))
-        return true;
-    return false;
 }
 
 void clearCells(Init &player, Init &bot)
@@ -192,9 +191,32 @@ void clearCells(Init &player, Init &bot)
     }
 }
 
+bool checkCells(Init &player, Init &bot)
+{
+    int count = 0;
+    for (int i = 0; i < 9; i++)
+    {
+        if (!player.cellMode[i] && !bot.cellMode[i])
+            count++;
+    }
+    if (count > 1)
+        return false;
+    return true;
+}
+
+int checkResult(Init &player, Init &bot, Sprite &line)
+{
+    if (checkHorizontal(player, bot, line) || checkVertical(player, bot, line) || checkDiagonal(player, bot, line))
+        return true;
+    if (checkCells(player, bot))
+        return true;
+    return false;
+}
+
 int main(int argc, char *argv[])
 {
-    RenderWindow window(VideoMode(600, 600), "Tic-tac-toe"); // РЎРѕР·РґР°РµРј РѕРєРЅРѕ РґР»СЏ РёРіСЂС‹
+    setlocale(LC_ALL, "Rus");
+    RenderWindow window(VideoMode(600, 640), "Крестики-нолики"); // Создаем окно для игры
 
     Texture figures;
     figures.loadFromFile("img/figures.png");
@@ -202,20 +224,33 @@ int main(int argc, char *argv[])
     for (int i = 0; i < 2; i++)
     {
         choice[i].setTexture(figures);
-        choice[i].setPosition(50 + 300 * i, 180);
+        choice[i].setPosition(50 + 300 * i, 220);
     }
 
     Texture backgroundTexture;
     backgroundTexture.loadFromFile("img/background.png");
     Sprite background(backgroundTexture);
 
+    Font font;
+    font.loadFromFile("utils/countryhouse.ttf");
+    Text mainMessage("Выбери фигуру:", font, 80);
+    mainMessage.setFillColor(Color::Black);
+    mainMessage.setStyle(Text::Bold);
+    mainMessage.setPosition(65, 50);
+
+    Text stepMessage("Твой ход!", font, 30);
+    stepMessage.setFillColor(Color::Green);
+    stepMessage.setStyle(Text::Bold);
+    stepMessage.setPosition(250, 598);
+
     Texture lineTexture;
     lineTexture.loadFromFile("img/line.png");
     Sprite line(lineTexture);
 
     bool onMenu = true, onGame = false, isEnd = false;
-    int playerCharacter = 0; // 0 - РєСЂРµСЃС‚РёРє, 1 - РЅРѕР»РёРє
+    int playerCharacter = 0; // 0 - крестик, 1 - нолик
     int botCharacter = 0;
+    bool isBotStep = false;
     Init player(figures), bot(figures);
 
 
@@ -258,11 +293,9 @@ int main(int argc, char *argv[])
                                     isEnd = true;
                                     break;
                                 }
-                                smartStep(player, bot);
-                                if (checkResult(player, bot, line))
-                                {
-                                    isEnd = true;
-                                }
+                                isBotStep = true;
+                                stepMessage.setFillColor(Color::Red);
+                                stepMessage.setString("Ход бота");
                             }
                         }
                     }
@@ -288,6 +321,7 @@ int main(int argc, char *argv[])
         {
             for (int i = 0; i < 2; i++)
                 window.draw(choice[i]);
+            window.draw(mainMessage);
         }
         else if (onGame)
         {
@@ -297,6 +331,7 @@ int main(int argc, char *argv[])
                 else if (bot.cellMode[i])
                     window.draw(bot.cells[i]);
 
+            window.draw(stepMessage);
             window.draw(background);
 
             if (isEnd)
@@ -304,6 +339,19 @@ int main(int argc, char *argv[])
         }
 
         window.display();
+
+        if (isBotStep)
+        {
+            Sleep(1000);
+            isBotStep = false;
+            smartStep(player, bot);
+            if (checkResult(player, bot, line))
+            {
+                isEnd = true;
+            }
+            stepMessage.setFillColor(Color::Green);
+            stepMessage.setString("Твой ход!");
+        }
     }
     
     return 0;
