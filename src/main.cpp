@@ -13,37 +13,57 @@ int main(int argc, char *argv[])
     RenderWindow window(VideoMode(600, 640), "Крестики-нолики"); // Создаем окно для игры
 
     Texture figures;
-    figures.loadFromFile("img/figures.png");
+    figures.loadFromFile("img/new_figures.png");
     Sprite choice[2];
     for (int i = 0; i < 2; i++)
     {
         choice[i].setTexture(figures);
-        choice[i].setPosition(50 + 300 * i, 220);
+        choice[i].setPosition(50 + 300 * i, 180);
     }
 
     Texture backgroundTexture;
-    backgroundTexture.loadFromFile("img/background.png");
+    backgroundTexture.loadFromFile("img/new_background.png");
     Sprite background(backgroundTexture);
 
     Font font;
-    font.loadFromFile("utils/countryhouse.ttf");
-    Text mainMessage("Выбери фигуру:", font, 80);
-    mainMessage.setFillColor(Color::Black);
-    mainMessage.setStyle(Text::Bold);
-    mainMessage.setPosition(65, 50);
-
-    Text stepMessage("Твой ход!", font, 30);
-    stepMessage.setFillColor(Color::Green);
-    stepMessage.setStyle(Text::Bold);
-    stepMessage.setPosition(250, 598);
+    font.loadFromFile("utils/RobotoSerif.ttf");
 
     Texture lineTexture;
     lineTexture.loadFromFile("img/line.png");
     Sprite line(lineTexture);
 
+    Texture startButtonTexture;
+    startButtonTexture.loadFromFile("img/button.png");
+    Sprite startButton(startButtonTexture);
+    startButton.setPosition(140, 500);
+
     bool onMenu = true, onGame = false, isBotStep = false, isEnd = false;
+    bool isCursorHand = false;
     int playerCharacter = 0, botCharacter = 0; // 0 - крестик, 1 - нолик
+    int result; // 1 - победа игрока, 2 - победа бота, 3 - ничья
     Init player(figures), bot(figures);
+
+    Text mainMessage("Выбери фигуру", font, 60);
+    mainMessage.setFillColor(Color::Black);
+    mainMessage.setStyle(Text::Bold);
+    mainMessage.setPosition(60, 50);
+
+    Text stepMessage("", font, 30);
+    stepMessage.setStyle(Text::Bold);
+    changeStepString(stepMessage, playerCharacter);
+
+    Text winMessage("ПОБЕДИТЕЛЬ!", font, 75);
+    winMessage.setFillColor(Color::Black);
+    winMessage.setStyle(Text::Bold);
+    winMessage.setPosition(15, 300);
+
+    Text startGameMessage("НАЧАТЬ ИГРУ", font, 35);
+    startGameMessage.setFillColor(Color(245, 236, 211, 255));
+    startGameMessage.setStyle(Text::Bold);
+    startGameMessage.setPosition(140, 500);
+
+    Cursor cursor;
+    cursor.loadFromSystem(Cursor::Arrow);
 
     while (window.isOpen())
     {
@@ -62,10 +82,16 @@ int main(int argc, char *argv[])
                     {
                         if (choice[i].getGlobalBounds().contains(mousePosition.x, mousePosition.y))
                         {
+                            cursor.loadFromSystem(Cursor::Arrow);
                             playerCharacter = i;
                             botCharacter = !playerCharacter;
                             onMenu = false;
                             onGame = true;
+                            if (!botCharacter) // Если бот - крестик
+                            {
+                                isBotStep = true;
+                                changeStepString(stepMessage, botCharacter);
+                            }
                         }
                     }
                 }
@@ -76,39 +102,58 @@ int main(int argc, char *argv[])
                         if ((player.cells[i].getGlobalBounds().contains(mousePosition.x, mousePosition.y)) && (!player.cellMode[i] && !bot.cellMode[i]))
                         {
                             player.cellMode[i] = true;
-                            if (checkResult(player, bot, line))
+                            if (result = checkResult(player, bot, line))
                             {
                                 isEnd = true;
+                                changeStepString(stepMessage, 2);
                                 break;
                             }
                             isBotStep = true;
-                            stepMessage.setFillColor(Color::Red);
-                            stepMessage.setString("Ход бота");
+                            changeStepString(stepMessage, botCharacter);
                         }
                     }
                 }
                 else if (isEnd)
                 {
                     isEnd = false;
-                    onGame = false;
-                    onMenu = true;
+                    // Sleep(350);
+                    if (startButton.getGlobalBounds().contains(mousePosition.x, mousePosition.y))
+                        onMenu = true;
+                    else
+                        onGame = true;
                     clearCells(player, bot);
                 }
             }
         }
 
-        hover(choice, mousePosition);
-
+        bool newCursor;
+        if (onMenu)
+            hover(choice, mousePosition, newCursor);
+        
         player.update(playerCharacter);
         bot.update(botCharacter);
 
-        window.clear(Color::White);
+        window.clear(Color(20, 189, 172, 255));
+
+        if (newCursor != isCursorHand && !isCursorHand)
+        {
+            cursor.loadFromSystem(Cursor::Hand);
+            isCursorHand = newCursor;
+        }
+        else if (newCursor != isCursorHand && isCursorHand)
+        {
+            cursor.loadFromSystem(Cursor::Arrow);
+            isCursorHand = newCursor;
+        }
+        window.setMouseCursor(cursor);
 
         if (onMenu)
         {
             for (int i = 0; i < 2; i++)
                 window.draw(choice[i]);
             window.draw(mainMessage);
+            window.draw(startButton);
+            window.draw(startGameMessage);
         }
         else if (onGame)
         {
@@ -120,24 +165,46 @@ int main(int argc, char *argv[])
 
             window.draw(stepMessage);
             window.draw(background);
-
-            if (isEnd)
+            if (isEnd && result != DRAW)
                 window.draw(line);
         }
+        else if (isEnd)
+        {
+            int figure;
+            if (result == PLAYER_WIN)
+                figure = playerCharacter;
+            else if (result == BOT_WIN)
+                figure = botCharacter;
 
+            choice[figure].setPosition(200, 100);
+            choice[figure].setTextureRect(IntRect(200 * figure, 0, 200, 200));
+            window.draw(choice[figure]);
+            choice[figure].setPosition(50 + 300 * figure, 180);
+            window.draw(winMessage); 
+            window.draw(startButton);
+        }
         window.display();
 
         if (isBotStep)
         {
             Sleep(1000);
             isBotStep = false;
-            smartStep(player, bot);
-            if (checkResult(player, bot, line))
+            makeSmartMove(player, bot);
+            if (result = checkResult(player, bot, line))
             {
+                changeStepString(stepMessage, 2);
                 isEnd = true;
             }
-            stepMessage.setFillColor(Color::Green);
-            stepMessage.setString("Твой ход!");
+            else
+            {
+                changeStepString(stepMessage, playerCharacter);
+            }
+        }
+
+        if (onGame && isEnd)
+        {
+            Sleep(1000);
+            onGame = false;
         }
     }
     

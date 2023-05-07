@@ -4,6 +4,7 @@
 
 #define PLAYER_WIN 1
 #define BOT_WIN 2
+#define DRAW 3
 
 using namespace sf;
 
@@ -32,11 +33,12 @@ public:
     }
 };
 
-void hover(Sprite *choice, Vector2i pos);
-void smartStep(Init &player, Init &bot);
+void hover(Sprite *choice, Vector2i pos, bool &isCursorHand);
+void makeSmartMove(Init &player, Init &bot);
 int checkHorizontal(Init &player, Init &bot, Sprite &line);
 int checkVertical(Init &player, Init &bot, Sprite &line);
 int checkDiagonal(Init &player, Init &bot, Sprite &line);
 void clearCells(Init &player, Init &bot);
-bool checkCells(Init &player, Init &bot);
+int checkCells(Init &player, Init &bot);
 int checkResult(Init &player, Init &bot, Sprite &line);
+void changeStepString(Text &stepMessage, int mode);

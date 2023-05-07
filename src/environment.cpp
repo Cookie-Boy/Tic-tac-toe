@@ -1,20 +1,30 @@
 #include <SFML/Graphics.hpp>
 #include <time.h>
+#include <iostream>
 
 #include <environment.hpp>
 
-void hover(Sprite *choice, Vector2i pos)
+using namespace std;
+
+void hover(Sprite *choice, Vector2i pos, bool &isCursorHand)
 {
     for (int i = 0; i < 2; i++)
     {
         if (choice[i].getGlobalBounds().contains(pos.x, pos.y))
+        {
             choice[i].setTextureRect(IntRect(200 * i, 200, 200, 200));
+            isCursorHand = true;
+            return;
+        }
         else
+        {
             choice[i].setTextureRect(IntRect(200 * i, 0, 200, 200));
+            isCursorHand = false;
+        }
     }
 }
 
-void smartStep(Init &player, Init &bot)
+void makeSmartMove(Init &player, Init &bot)
 {
     srand(time(NULL));
     int random;
@@ -160,7 +170,7 @@ void clearCells(Init &player, Init &bot)
     }
 }
 
-bool checkCells(Init &player, Init &bot)
+int checkCells(Init &player, Init &bot)
 {
     int count = 0;
     for (int i = 0; i < 9; i++)
@@ -169,15 +179,40 @@ bool checkCells(Init &player, Init &bot)
             count++;
     }
     if (count > 1)
-        return false;
-    return true;
+        return 0;
+    return DRAW;
 }
 
 int checkResult(Init &player, Init &bot, Sprite &line)
 {
-    if (checkHorizontal(player, bot, line) || checkVertical(player, bot, line) || checkDiagonal(player, bot, line))
-        return true;
-    if (checkCells(player, bot))
-        return true;
-    return false;
+    int result;
+    if (result = checkHorizontal(player, bot, line))
+        return result;
+    if (result = checkVertical(player, bot, line))
+        return result;
+    if (result = checkDiagonal(player, bot, line))
+        return result;
+    return checkCells(player, bot);
+}
+
+void changeStepString(Text &stepMessage, int mode)
+{
+    if (!mode)
+    {
+        stepMessage.setFillColor(Color(84, 84, 84, 255));
+        stepMessage.setPosition(235, 598);
+        stepMessage.setString("Ходит X");
+    }
+    else if (mode == 1)
+    {
+        stepMessage.setFillColor(Color(236, 234, 210, 255));
+        stepMessage.setPosition(235, 598);
+        stepMessage.setString("Ходит O"); 
+    }
+    else if (mode == 2)
+    {
+        stepMessage.setFillColor(Color(84, 84, 84, 255));
+        stepMessage.setPosition(185, 598);
+        stepMessage.setString("Игра окончена");
+    }
 }
