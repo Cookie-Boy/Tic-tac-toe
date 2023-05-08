@@ -13,7 +13,7 @@ int main(int argc, char *argv[])
     RenderWindow window(VideoMode(600, 640), "Крестики-нолики"); // Создаем окно для игры
 
     Texture figures;
-    figures.loadFromFile("img/new_figures.png");
+    figures.loadFromFile("img/figures.png");
     Sprite choice[2];
     for (int i = 0; i < 2; i++)
     {
@@ -22,7 +22,7 @@ int main(int argc, char *argv[])
     }
 
     Texture backgroundTexture;
-    backgroundTexture.loadFromFile("img/new_background.png");
+    backgroundTexture.loadFromFile("img/background.png");
     Sprite background(backgroundTexture);
 
     Font font;
@@ -35,7 +35,7 @@ int main(int argc, char *argv[])
     Texture startButtonTexture;
     startButtonTexture.loadFromFile("img/button.png");
     Sprite startButton(startButtonTexture);
-    startButton.setPosition(140, 500);
+    startButton.setPosition(120, 475);
 
     bool onMenu = true, onGame = false, isBotStep = false, isEnd = false;
     bool isCursorHand = false;
@@ -50,17 +50,14 @@ int main(int argc, char *argv[])
 
     Text stepMessage("", font, 30);
     stepMessage.setStyle(Text::Bold);
-    changeStepString(stepMessage, playerCharacter);
 
-    Text winMessage("ПОБЕДИТЕЛЬ!", font, 75);
+    Text winMessage("", font, 75);
     winMessage.setFillColor(Color::Black);
     winMessage.setStyle(Text::Bold);
-    winMessage.setPosition(15, 300);
 
-    Text startGameMessage("НАЧАТЬ ИГРУ", font, 35);
-    startGameMessage.setFillColor(Color(245, 236, 211, 255));
+    Text startGameMessage("НАЧАТЬ ИГРУ", font, 43);
     startGameMessage.setStyle(Text::Bold);
-    startGameMessage.setPosition(140, 500);
+    startGameMessage.setPosition(130, 485);
 
     Cursor cursor;
     cursor.loadFromSystem(Cursor::Arrow);
@@ -92,6 +89,26 @@ int main(int argc, char *argv[])
                                 isBotStep = true;
                                 changeStepString(stepMessage, botCharacter);
                             }
+                            else
+                            {
+                                changeStepString(stepMessage, playerCharacter);
+                            }
+                        }
+                        else if (startButton.getGlobalBounds().contains(mousePosition.x, mousePosition.y))
+                        {
+                            cursor.loadFromSystem(Cursor::Arrow);
+                            putRandomValues(playerCharacter, botCharacter);
+                            onMenu = false;
+                            onGame = true;
+                            if (!botCharacter) // Если бот - крестик
+                            {
+                                isBotStep = true;
+                                changeStepString(stepMessage, botCharacter);
+                            }
+                            else
+                            {
+                                changeStepString(stepMessage, playerCharacter);
+                            }
                         }
                     }
                 }
@@ -121,6 +138,16 @@ int main(int argc, char *argv[])
                         onMenu = true;
                     else
                         onGame = true;
+
+                    if (!botCharacter) // Если бот - крестик
+                    {
+                        isBotStep = true;
+                        changeStepString(stepMessage, botCharacter);
+                    }
+                    else
+                    {
+                        changeStepString(stepMessage, playerCharacter);
+                    }
                     clearCells(player, bot);
                 }
             }
@@ -128,8 +155,11 @@ int main(int argc, char *argv[])
 
         bool newCursor;
         if (onMenu)
-            hover(choice, mousePosition, newCursor);
-        
+        {
+            changeFigureTexture(choice, mousePosition, newCursor);
+            if (!newCursor)
+                changeButtonTexture(startButton, startGameMessage, mousePosition, newCursor);
+        }
         player.update(playerCharacter);
         bot.update(botCharacter);
 
@@ -171,15 +201,32 @@ int main(int argc, char *argv[])
         else if (isEnd)
         {
             int figure;
-            if (result == PLAYER_WIN)
-                figure = playerCharacter;
-            else if (result == BOT_WIN)
-                figure = botCharacter;
-
-            choice[figure].setPosition(200, 100);
-            choice[figure].setTextureRect(IntRect(200 * figure, 0, 200, 200));
-            window.draw(choice[figure]);
-            choice[figure].setPosition(50 + 300 * figure, 180);
+            if (result != DRAW)
+            {
+                if (result == PLAYER_WIN)
+                {
+                    figure = playerCharacter;
+                }
+                else
+                {
+                    figure = botCharacter;
+                }
+                choice[figure].setPosition(200, 100);
+                choice[figure].setTextureRect(IntRect(200 * figure, 0, 200, 200));
+                window.draw(choice[figure]);
+                choice[figure].setPosition(50 + 300 * figure, 180);
+                winMessage.setString("ПОБЕДИТЕЛЬ!");
+                winMessage.setPosition(15, 300);
+            }
+            else
+            {
+                choice[0].setPosition(110, 100);
+                choice[0].setTextureRect(IntRect(0, 0, 400, 200));
+                window.draw(choice[0]);
+                choice[0].setPosition(50 + 300 * figure, 180);
+                winMessage.setString("НИЧЬЯ!");
+                winMessage.setPosition(150, 300);
+            }
             window.draw(winMessage); 
             window.draw(startButton);
         }
@@ -200,8 +247,7 @@ int main(int argc, char *argv[])
                 changeStepString(stepMessage, playerCharacter);
             }
         }
-
-        if (onGame && isEnd)
+        else if (onGame && isEnd)
         {
             Sleep(1000);
             onGame = false;

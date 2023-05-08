@@ -6,7 +6,7 @@
 
 using namespace std;
 
-void hover(Sprite *choice, Vector2i pos, bool &isCursorHand)
+void changeFigureTexture(Sprite *choice, Vector2i pos, bool &isCursorHand)
 {
     for (int i = 0; i < 2; i++)
     {
@@ -22,6 +22,29 @@ void hover(Sprite *choice, Vector2i pos, bool &isCursorHand)
             isCursorHand = false;
         }
     }
+}
+
+void changeButtonTexture(Sprite &button, Text &message, Vector2i pos, bool &isCursorHand)
+{
+    if (button.getGlobalBounds().contains(pos.x, pos.y))
+    {
+        button.setTextureRect(IntRect(0, 80, 350, 80));
+        message.setFillColor(Color(84, 84, 84, 255));
+        isCursorHand = true;
+    }
+    else
+    {
+        button.setTextureRect(IntRect(0, 0, 350, 80));
+        message.setFillColor(Color(245, 236, 211, 255));
+        isCursorHand = false;
+    }
+}
+
+void putRandomValues(int &playerCharacter, int &botCharacter)
+{
+    srand(time(NULL));
+    playerCharacter = rand() % 2;
+    botCharacter = !playerCharacter;
 }
 
 void makeSmartMove(Init &player, Init &bot)
@@ -178,7 +201,7 @@ int checkCells(Init &player, Init &bot)
         if (!player.cellMode[i] && !bot.cellMode[i])
             count++;
     }
-    if (count > 1)
+    if (count > 0)
         return 0;
     return DRAW;
 }

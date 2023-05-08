@@ -33,7 +33,9 @@ public:
     }
 };
 
-void hover(Sprite *choice, Vector2i pos, bool &isCursorHand);
+void changeFigureTexture(Sprite *choice, Vector2i pos, bool &isCursorHand);
+void changeButtonTexture(Sprite &button, Text &message, Vector2i pos, bool &isCursorHand);
+void putRandomValues(int &playerCharacter, int &botCharacter);
 void makeSmartMove(Init &player, Init &bot);
 int checkHorizontal(Init &player, Init &bot, Sprite &line);
 int checkVertical(Init &player, Init &bot, Sprite &line);
