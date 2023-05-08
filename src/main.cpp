@@ -35,7 +35,7 @@ int main(int argc, char *argv[])
     Texture startButtonTexture;
     startButtonTexture.loadFromFile("img/button.png");
     Sprite startButton(startButtonTexture);
-    startButton.setPosition(120, 475);
+    startButton.setPosition(125, 475);
 
     bool onMenu = true, onGame = false, isBotStep = false, isEnd = false;
     bool isCursorHand = false;
@@ -57,7 +57,11 @@ int main(int argc, char *argv[])
 
     Text startGameMessage("Õ¿◊¿“‹ »√–”", font, 43);
     startGameMessage.setStyle(Text::Bold);
-    startGameMessage.setPosition(130, 485);
+    startGameMessage.setPosition(135, 485);
+
+    Text mainMenuMessage("√À¿¬ÕŒ≈ Ã≈Õﬁ", font, 37);
+    mainMenuMessage.setStyle(Text::Bold);
+    mainMenuMessage.setPosition(130, 490);
 
     Cursor cursor;
     cursor.loadFromSystem(Cursor::Arrow);
@@ -160,6 +164,11 @@ int main(int argc, char *argv[])
             if (!newCursor)
                 changeButtonTexture(startButton, startGameMessage, mousePosition, newCursor);
         }
+        else if (isEnd)
+        {
+            changeButtonTexture(startButton, mainMenuMessage, mousePosition, newCursor);
+        }
+            
         player.update(playerCharacter);
         bot.update(botCharacter);
 
@@ -229,6 +238,7 @@ int main(int argc, char *argv[])
             }
             window.draw(winMessage); 
             window.draw(startButton);
+            window.draw(mainMenuMessage);
         }
         window.display();
 
