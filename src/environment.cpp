@@ -6,6 +6,59 @@
 
 using namespace std;
 
+void createAllWidgets(Texture &figures, Texture &buttonTexture, Sprite *choice, Texture &bkTexture, Sprite &bk, Texture &lineTexture, Sprite &line)
+{
+    figures.loadFromFile("img/figures.png");
+    for (int i = 0; i < 2; i++)
+    {
+        choice[i].setTexture(figures);
+        choice[i].setPosition(50 + 300 * i, 180);
+    }
+
+    buttonTexture.loadFromFile("img/button.png");
+    choice[2].setTexture(buttonTexture);
+    choice[2].setPosition(125, 475);
+
+    bkTexture.loadFromFile("img/background.png");
+    bk.setTexture(bkTexture);
+
+    lineTexture.loadFromFile("img/line.png");
+    line.setTexture(lineTexture);
+}
+
+void createAllTextWidgets(Font &font, Text &mainMsg, Text &stepMsg, Text &winMsg, Text &startMsg, Text &menuMsg)
+{
+    font.loadFromFile("utils/RobotoSerif.ttf");
+
+    mainMsg.setString("Âûáåðè ôèãóðó");
+    mainMsg.setFont(font);
+    mainMsg.setCharacterSize(60);
+    mainMsg.setFillColor(Color::Black);
+    mainMsg.setStyle(Text::Bold);
+    mainMsg.setPosition(60, 50);
+
+    stepMsg.setFont(font);
+    stepMsg.setCharacterSize(30);
+    stepMsg.setStyle(Text::Bold);
+
+    winMsg.setFont(font);
+    winMsg.setCharacterSize(75);
+    winMsg.setFillColor(Color::Black);
+    winMsg.setStyle(Text::Bold);
+
+    startMsg.setString("ÍÀ×ÀÒÜ ÈÃÐÓ");
+    startMsg.setFont(font);
+    startMsg.setCharacterSize(43);
+    startMsg.setStyle(Text::Bold);
+    startMsg.setPosition(135, 485);
+
+    menuMsg.setString("ÃËÀÂÍÎÅ ÌÅÍÞ");
+    menuMsg.setFont(font);
+    menuMsg.setCharacterSize(37);
+    menuMsg.setStyle(Text::Bold);
+    menuMsg.setPosition(130, 490);
+}
+
 void changeFigureTexture(Sprite *choice, Vector2i pos, bool &isCursorHand)
 {
     for (int i = 0; i < 2; i++)
@@ -43,7 +96,7 @@ void changeButtonTexture(Sprite &button, Text &message, Vector2i pos, bool &isCu
 void putRandomValues(int &playerCharacter, int &botCharacter)
 {
     srand(time(NULL));
-    playerCharacter = rand() % 2;
+    playerCharacter = rand() % 1;
     botCharacter = !playerCharacter;
 }
 
@@ -218,21 +271,21 @@ int checkResult(Init &player, Init &bot, Sprite &line)
     return checkCells(player, bot);
 }
 
-void changeStepString(Text &stepMessage, int mode)
+void changeStepString(Text &stepMessage, int move)
 {
-    if (!mode)
+    if (move == PLAYER_MOVE)
     {
         stepMessage.setFillColor(Color(84, 84, 84, 255));
         stepMessage.setPosition(235, 598);
-        stepMessage.setString("Õîäèò X");
+        stepMessage.setString("Òâîé õîä!");
     }
-    else if (mode == 1)
+    else if (move == BOT_MOVE)
     {
         stepMessage.setFillColor(Color(236, 234, 210, 255));
         stepMessage.setPosition(235, 598);
-        stepMessage.setString("Õîäèò O"); 
+        stepMessage.setString("Õîä áîòà"); 
     }
-    else if (mode == 2)
+    else if (move == END_GAME)
     {
         stepMessage.setFillColor(Color(84, 84, 84, 255));
         stepMessage.setPosition(185, 598);

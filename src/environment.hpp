@@ -5,6 +5,9 @@
 #define PLAYER_WIN 1
 #define BOT_WIN 2
 #define DRAW 3
+#define BOT_MOVE 100
+#define PLAYER_MOVE 200
+#define END_GAME 300
 
 using namespace sf;
 
@@ -33,6 +36,8 @@ public:
     }
 };
 
+void createAllWidgets(Texture &figures, Texture &buttonTexture, Sprite *choice, Texture &bkTexture, Sprite &bk, Texture &lineTexture, Sprite &line);
+void createAllTextWidgets(Font &font, Text &mainMsg, Text &stepMsg, Text &winMsg, Text &startMsg, Text &menuMsg);
 void changeFigureTexture(Sprite *choice, Vector2i pos, bool &isCursorHand);
 void changeButtonTexture(Sprite &button, Text &message, Vector2i pos, bool &isCursorHand);
 void putRandomValues(int &playerCharacter, int &botCharacter);
