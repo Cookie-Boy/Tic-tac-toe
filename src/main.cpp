@@ -7,6 +7,8 @@
 
 using namespace std;
 
+int playerCharacter, botCharacter;
+
 int main(int argc, char *argv[])
 {
     setlocale(LC_ALL, "Rus");
@@ -22,8 +24,8 @@ int main(int argc, char *argv[])
 
     bool onMenu = true, onGame = false, isBotStep = false, isEnd = false;
     bool isCursorHand = false;
-    int playerCharacter = 0, botCharacter = 0; // 0 - крестик, 1 - нолик
     int result; // 1 - победа игрока, 2 - победа бота, 3 - ничья
+    int gameField[9] = { 0 }; // Здесь 0 - пусто, 1 - крестик, 2 - нолик
     Init player(figures), bot(figures);
 
     cursor.loadFromSystem(Cursor::Arrow);
@@ -48,15 +50,15 @@ int main(int argc, char *argv[])
                         cursor.loadFromSystem(Cursor::Arrow);
                         if (i == 2)
                         {
-                            putRandomValues(playerCharacter, botCharacter);
+                            putRandomValues();
                         }
                         else
                         {
-                            playerCharacter = i;
-                            botCharacter = !playerCharacter;
+                            playerCharacter = i + 1;
+                            (playerCharacter == 1) ? botCharacter = 2 : botCharacter = 1;
                         }
 
-                        if (!botCharacter) // Если бот - крестик
+                        if (botCharacter == 1) // Если бот - крестик
                         {
                             isBotStep = true;
                             changeStepString(stepMessage, BOT_MOVE);
@@ -72,10 +74,10 @@ int main(int argc, char *argv[])
             {
                 for (int i = 0; i < 9; i++)
                 {
-                    if ((player.cells[i].getGlobalBounds().contains(mousePosition.x, mousePosition.y)) && (!player.cellMode[i] && !bot.cellMode[i]))
+                    if ((player.cells[i].getGlobalBounds().contains(mousePosition.x, mousePosition.y)) && (!gameField[i] && !gameField[i]))
                     {
-                        player.cellMode[i] = true;
-                        if (result = checkResult(player, bot, line))
+                        gameField[i] = playerCharacter;
+                        if (result = checkResult(gameField, line))
                         {
                             isEnd = true;
                             changeStepString(stepMessage, END_GAME);
@@ -97,7 +99,7 @@ int main(int argc, char *argv[])
                 else
                 {
                     onGame = true;
-                    if (!botCharacter) // Если бот - крестик
+                    if (botCharacter == 1) // Если бот - крестик
                     {
                         isBotStep = true;
                         changeStepString(stepMessage, BOT_MOVE);
@@ -107,7 +109,7 @@ int main(int argc, char *argv[])
                         changeStepString(stepMessage, PLAYER_MOVE);
                     }
                 }
-                clearCells(player, bot);
+                clearCells(gameField);
             }
         }
 
@@ -151,9 +153,9 @@ int main(int argc, char *argv[])
         else if (onGame)
         {
             for (int i = 0; i < 9; i++)
-                if (player.cellMode[i])
+                if (gameField[i] == playerCharacter)
                     window.draw(player.cells[i]);
-                else if (bot.cellMode[i])
+                else if (gameField[i] == botCharacter)
                     window.draw(bot.cells[i]);
 
             window.draw(stepMessage);
@@ -168,11 +170,11 @@ int main(int argc, char *argv[])
             {
                 if (result == PLAYER_WIN)
                 {
-                    figure = playerCharacter;
+                    figure = playerCharacter - 1;
                 }
                 else
                 {
-                    figure = botCharacter;
+                    figure = botCharacter - 1;
                 }
                 choice[figure].setPosition(200, 100);
                 choice[figure].setTextureRect(IntRect(200 * figure, 0, 200, 200));
@@ -200,8 +202,9 @@ int main(int argc, char *argv[])
         {
             Sleep(1000);
             isBotStep = false;
-            makeSmartMove(player, bot);
-            if (result = checkResult(player, bot, line))
+            Step move = findOptimalMove(gameField, botCharacter, line);
+            gameField[move.pos] = botCharacter;
+            if (result = checkResult(gameField, line))
             {
                 changeStepString(stepMessage, END_GAME);
                 isEnd = true;

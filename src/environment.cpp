@@ -93,35 +93,35 @@ void changeButtonTexture(Sprite &button, Text &message, Vector2i pos, bool &isCu
     }
 }
 
-void putRandomValues(int &playerCharacter, int &botCharacter)
+void putRandomValues()
 {
     srand(time(NULL));
-    playerCharacter = rand() % 1;
-    botCharacter = !playerCharacter;
+    playerCharacter = rand() % 2 + 1;
+    (playerCharacter == 1) ? botCharacter = 2 : botCharacter = 1;
 }
 
-void makeSmartMove(Init &player, Init &bot)
+void makeSmartMove(int *gameField)
 {
     srand(time(NULL));
     int random;
     do
     {
         random = rand() % 9;
-    } while (player.cellMode[random] || bot.cellMode[random]);
+    } while (gameField[random] || gameField[random]);
     
-    bot.cellMode[random] = true;
+    gameField[random] = botCharacter;
 }
 
-int checkHorizontal(Init &player, Init &bot, Sprite &line)
+int checkHorizontal(int *gameField, Sprite &line)
 {
     int playerCounter = 0, botCounter = 0;
     for (int i = 0; i < 7; i += 3)
     {
         for (int j = i; j < (i + 3); j++)
         {
-            if (player.cellMode[j])
+            if (gameField[j] == playerCharacter)
                 playerCounter++;
-            else if (bot.cellMode[j])
+            else if (gameField[j] == botCharacter)
                 botCounter++;
 
             if (playerCounter == 3)
@@ -147,16 +147,16 @@ int checkHorizontal(Init &player, Init &bot, Sprite &line)
     return 0;
 }
 
-int checkVertical(Init &player, Init &bot, Sprite &line)
+int checkVertical(int *gameField, Sprite &line)
 {
     int playerCounter = 0, botCounter = 0;
     for (int i = 0; i < 3; i++)
     {
         for (int j = i; j < (i + 7); j += 3)
         {
-            if (player.cellMode[j])
+            if (gameField[j] == playerCharacter)
                 playerCounter++;
-            else if (bot.cellMode[j])
+            else if (gameField[j] == botCharacter)
                 botCounter++;
 
             if (playerCounter == 3)
@@ -182,15 +182,15 @@ int checkVertical(Init &player, Init &bot, Sprite &line)
     return 0;
 }
 
-int checkDiagonal(Init &player, Init &bot, Sprite &line)
+int checkDiagonal(int *gameField, Sprite &line)
 {
     int playerCounter = 0, botCounter = 0;
 
     for (int i = 0; i < 9; i += 4)
     {
-        if (player.cellMode[i])
+        if (gameField[i] == playerCharacter)
             playerCounter++;
-        else if (bot.cellMode[i])
+        else if (gameField[i] == botCharacter)
             botCounter++;
 
         if (playerCounter == 3)
@@ -214,9 +214,9 @@ int checkDiagonal(Init &player, Init &bot, Sprite &line)
 
     for (int i = 2; i < 7; i += 2)
     {
-        if (player.cellMode[i])
+        if (gameField[i] == playerCharacter)
             playerCounter++;
-        else if (bot.cellMode[i])
+        else if (gameField[i] == botCharacter)
             botCounter++;
 
         if (playerCounter == 3)
@@ -237,21 +237,20 @@ int checkDiagonal(Init &player, Init &bot, Sprite &line)
     return 0;
 }
 
-void clearCells(Init &player, Init &bot)
+void clearCells(int *gameField)
 {
     for (int i = 0; i < 9; i++)
     {
-        player.cellMode[i] = false;
-        bot.cellMode[i] = false;
+        gameField[i] = 0;
     }
 }
 
-int checkCells(Init &player, Init &bot)
+int checkCells(int *gameField)
 {
     int count = 0;
     for (int i = 0; i < 9; i++)
     {
-        if (!player.cellMode[i] && !bot.cellMode[i])
+        if (!gameField[i])
             count++;
     }
     if (count > 0)
@@ -259,16 +258,69 @@ int checkCells(Init &player, Init &bot)
     return DRAW;
 }
 
-int checkResult(Init &player, Init &bot, Sprite &line)
+int checkResult(int *gameField, Sprite &line)
 {
     int result;
-    if (result = checkHorizontal(player, bot, line))
+    if (result = checkHorizontal(gameField, line))
         return result;
-    if (result = checkVertical(player, bot, line))
+    if (result = checkVertical(gameField, line))
         return result;
-    if (result = checkDiagonal(player, bot, line))
+    if (result = checkDiagonal(gameField, line))
         return result;
-    return checkCells(player, bot);
+    return checkCells(gameField);
+}
+
+void copyArray(int *array, int *newArray)
+{
+    for (int i = 0; i < 9; i++)
+        newArray[i] = array[i];
+}
+
+Step findOptimalMove(int *gameField, int cross, Sprite &line)
+{
+    Step bestMove;
+    (cross == botCharacter) ? bestMove.score = -10 : bestMove.score = 10;
+
+    if (int result = checkResult(gameField, line))
+    {
+        if (result == BOT_WIN)
+            bestMove.score = 1;
+        else if (result == PLAYER_WIN)
+            bestMove.score = -1;
+        else if (result == DRAW)
+            bestMove.score = 0;
+    }
+    else
+    {
+        for (int i = 0; i < 9; i++)
+        {
+            if (!gameField[i])
+            {
+                int newArray[9];
+                copyArray(gameField, newArray);
+                newArray[i] = cross;
+                if (cross == botCharacter)
+                {
+                    Step currentMove = findOptimalMove(newArray, playerCharacter, line);
+                    if (currentMove.score > bestMove.score)
+                    {
+                        bestMove.score = currentMove.score;
+                        bestMove.pos = i;
+                    }
+                }
+                else
+                {
+                    Step currentMove = findOptimalMove(newArray, botCharacter, line);
+                    if (currentMove.score < bestMove.score)
+                    {
+                        bestMove.score = currentMove.score;
+                        bestMove.pos = i;
+                    }
+                }
+            }
+        }
+    }
+    return bestMove;
 }
 
 void changeStepString(Text &stepMessage, int move)
