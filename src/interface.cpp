@@ -1,22 +1,17 @@
 #include <SFML/Graphics.hpp>
+#include <cstring>
 
 #include <interface.hpp>
 
 // Interface
 
-void Interface::mainButtonHover(Object &button, Text &text, Vector2i mousePos)
+void Interface::setCursor(Cursor::Type cursorType)
 {
-    if (button.sprite.getGlobalBounds().contains(mousePos.x, mousePos.y))
+    if (cursorType != this->cursorType)
     {
-        button.sprite.setTextureRect(IntRect(0, 80, 350, 80));
-        text.setFillColor(Color(84, 84, 84, 255));
-        isCursorHand = true;
-    }
-    else
-    {
-        button.sprite.setTextureRect(IntRect(0, 0, 350, 80));
-        text.setFillColor(Color(245, 236, 211, 255));
-        isCursorHand = false;
+        this->cursor.loadFromSystem(cursorType);
+        this->cursorType = cursorType;
+        cout << "hop" << endl;
     }
 }
 
@@ -27,30 +22,47 @@ Cursor &Interface::getCursor()
 
 // StartWindow
 
-void StartWindow::figuresHover(Vector2i mousePos)
+void StartWindow::hover(Object *button, Text &text, Vector2i mousePos)
 {
+    if (button->sprite.getGlobalBounds().contains(mousePos.x, mousePos.y))
+    {
+        button->sprite.setTextureRect(IntRect(0, 80, 350, 80));
+        text.setFillColor(Color(84, 84, 84, 255));
+        setCursor(Cursor::Hand);
+        return;
+    }
+    else
+    {
+        button->sprite.setTextureRect(IntRect(0, 0, 350, 80));
+        text.setFillColor(Color(245, 236, 211, 255));
+        // setCursor(Cursor::Arrow);
+    }
+
     for (int i = 0; i < 2; i++)
     {
-        if (figureButtons[i].sprite.getGlobalBounds().contains(mousePos.x, mousePos.y))
+        if (buttons[i].sprite.getGlobalBounds().contains(mousePos.x, mousePos.y))
         {
-            figureButtons[i].sprite.setTextureRect(IntRect(200 * i, 200, 200, 200));
-            isCursorHand = true;
+            buttons[i].sprite.setTextureRect(IntRect(200 * i, 200, 200, 200));
+            setCursor(Cursor::Hand);
             return;
         }
         else
         {
-            figureButtons[i].sprite.setTextureRect(IntRect(200 * i, 0, 200, 200));
-            isCursorHand = false;
+            buttons[i].sprite.setTextureRect(IntRect(200 * i, 0, 200, 200));
+            // setCursor(Cursor::Arrow);
+            // isCursorHand = false;
         }
     }
+
+    setCursor(Cursor::Arrow);
 }
 
 Object **StartWindow::getAllObjects()
 {
     Object **objects = new Object *[3];
-    objects[0] = &figureButtons[0];
-    objects[1] = &figureButtons[1];
-    objects[2] = &startButton;
+    objects[0] = &buttons[0];
+    objects[1] = &buttons[1];
+    objects[2] = &buttons[2];
     return objects;
 }
 
@@ -62,17 +74,6 @@ Text **StartWindow::getAllTexts()
     return texts;
 }
 
-Object *StartWindow::getFigureButtons()
-{
-    return this->figureButtons;
-}
-
-
-Object &StartWindow::getStartButton()
-{
-    return this->startButton;
-}
-
 Text &StartWindow::getStartText()
 {
     return this->startText;
@@ -80,16 +81,21 @@ Text &StartWindow::getStartText()
 
 void StartWindow::createAllElements()
 {
-    for (int i = 0; i < 2; i++)
+    for (int i = 0; i < 3; i++)
     {
-        figureButtons[i].texture.loadFromFile("img/figures.png");
-        figureButtons[i].sprite.setTexture(figureButtons[i].texture);
-        figureButtons[i].sprite.setPosition(50 + 300 * i, 180);
+        if (i == 2)
+        {
+            buttons[i].texture.loadFromFile("img/button.png");
+            buttons[i].sprite.setTexture(buttons[i].texture);
+            buttons[i].sprite.setPosition(125, 475);
+        }
+        else
+        {
+            buttons[i].texture.loadFromFile("img/figures.png");
+            buttons[i].sprite.setTexture(buttons[i].texture);
+            buttons[i].sprite.setPosition(50 + 300 * i, 180);
+        }
     }
-
-    startButton.texture.loadFromFile("img/button.png");
-    startButton.sprite.setTexture(startButton.texture);
-    startButton.sprite.setPosition(125, 475);
 
     font.loadFromFile("utils/RobotoSerif.ttf");
 
@@ -173,7 +179,7 @@ Result GameField::checkHorizontal(Cell *gameField)
     Figure botFigure = this->getBotFigure();
     Result result;
     result.type = Type::Horizontal;
-    result.winner = 0;
+    result.winner = Winner::Unknown;
     int playerCounter = 0, botCounter = 0;
 
     for (int i = 0; i < 7; i += 3)
@@ -187,13 +193,13 @@ Result GameField::checkHorizontal(Cell *gameField)
 
             if (playerCounter == 3)
             {
-                result.winner = PLAYER_WIN;
+                result.winner = Winner::Player;
                 result.pos = i;
                 return result;
             }
             else if (botCounter == 3)
             {
-                result.winner = BOT_WIN;
+                result.winner = Winner::Bot;
                 result.pos = i;
                 return result;
             }
@@ -210,7 +216,7 @@ Result GameField::checkVertical(Cell *gameField)
     Figure botFigure = this->getBotFigure();
     Result result;
     result.type = Type::Vertical;
-    result.winner = 0;
+    result.winner = Winner::Unknown;
     int playerCounter = 0, botCounter = 0;
 
     for (int i = 0; i < 3; i++)
@@ -224,13 +230,13 @@ Result GameField::checkVertical(Cell *gameField)
 
             if (playerCounter == 3)
             {
-                result.winner = PLAYER_WIN;
+                result.winner = Winner::Player;
                 result.pos = i;
                 return result;
             }
             else if (botCounter == 3)
             {
-                result.winner = BOT_WIN;
+                result.winner = Winner::Bot;
                 result.pos = i;
                 return result;
             }
@@ -247,7 +253,7 @@ Result GameField::checkDiagonal(Cell *gameField)
     Figure botFigure = this->getBotFigure();
     Result result;
     result.type = Type::Diagonal;
-    result.winner = 0;
+    result.winner = Winner::Unknown;
     int playerCounter = 0, botCounter = 0;
 
     for (int i = 0; i < 9; i += 4)
@@ -259,13 +265,13 @@ Result GameField::checkDiagonal(Cell *gameField)
 
         if (playerCounter == 3)
         {
-            result.winner = PLAYER_WIN;
+            result.winner = Winner::Player;
             result.pos = 1;
             return result;
         }
         else if (botCounter == 3)
         {
-            result.winner = BOT_WIN;
+            result.winner = Winner::Bot;
             result.pos = 1;
             return result;
         }
@@ -283,13 +289,13 @@ Result GameField::checkDiagonal(Cell *gameField)
 
         if (playerCounter == 3)
         {
-            result.winner = PLAYER_WIN;
+            result.winner = Winner::Player;
             result.pos = 2;
             return result;
         }
         else if (botCounter == 3)
         {
-            result.winner = BOT_WIN;
+            result.winner = Winner::Bot;
             result.pos = 2;
             return result;
         }
@@ -308,21 +314,21 @@ Result GameField::checkCells(Cell *gameField)
     }
     if (count > 0)
     {
-        result.winner = NOT_EMPTY;
+        result.winner = Winner::Unknown;
         return result;
     }
-    result.winner = DRAW;
+    result.winner = Winner::Draw;
     return result;
 }
 
 Result GameField::checkResult(GameField &gameObject, Cell *gameField)
 {
     Result result;
-    if ((result = gameObject.checkHorizontal(gameField)).winner)
+    if ((result = gameObject.checkHorizontal(gameField)).winner != Winner::Unknown)
         return result;
-    if ((result = gameObject.checkVertical(gameField)).winner)
+    if ((result = gameObject.checkVertical(gameField)).winner != Winner::Unknown)
         return result;
-    if ((result = gameObject.checkDiagonal(gameField)).winner)
+    if ((result = gameObject.checkDiagonal(gameField)).winner != Winner::Unknown)
         return result;
     return gameObject.checkCells(gameField);
 }
@@ -330,10 +336,10 @@ Result GameField::checkResult(GameField &gameObject, Cell *gameField)
 void GameField::clearCells(GameField &gameField)
 {
     for (int i = 0; i < 9; i++)
-        gameField.getCells()[i].figure = Figure::Empty;
+        gameField.setCell(i, Figure::Empty);
 }
 
-void copyArray(Cell *oldCells, Cell *newCells)
+void GameField::copyArray(Cell *oldCells, Cell *newCells)
 {
     for (int i = 0; i < 9; i++)
         newCells[i].figure = oldCells[i].figure;
@@ -393,24 +399,16 @@ Sprite &GameField::getLineSprite()
 
 void GameField::createAllElements()
 {
-    // Texture image;
-    // image.loadFromFile("img/figures.png");
-
     for (int i = 0; i < 9; i++)
     {
         cells[i].cellTexture.loadFromFile("img/figures.png");
         cells[i].cellSprite.setTexture(cells[i].cellTexture);
         cells[i].figure = Figure::Empty;
-
     }
 
     for (int i = 0; i < 3; i++)
-    {
         for (int j = 0; j < 3; j++)
-        {
             cells[i * 3 + j].cellSprite.setPosition(200 * j, 200 * i);
-        }
-    }
 
     font.loadFromFile("utils/RobotoSerif.ttf");
     stepText.setFont(font);
@@ -421,6 +419,24 @@ void GameField::createAllElements()
     background.sprite.setTexture(background.texture);
     line.texture.loadFromFile("img/line.png");
     line.sprite.setTexture(line.texture);
+}
+
+void ResultWindow::hover(Object *button, Text &text, Vector2i mousePos)
+{
+    if (button->sprite.getGlobalBounds().contains(mousePos.x, mousePos.y))
+    {
+        button->sprite.setTextureRect(IntRect(0, 80, 350, 80));
+        text.setFillColor(Color(84, 84, 84, 255));
+        setCursor(Cursor::Hand);
+        return;
+    }
+    else
+    {
+        button->sprite.setTextureRect(IntRect(0, 0, 350, 80));
+        text.setFillColor(Color(245, 236, 211, 255));
+    }
+
+    setCursor(Cursor::Arrow);
 }
 
 Object **ResultWindow::getAllObjects()
@@ -441,6 +457,20 @@ Text **ResultWindow::getAllTexts()
 Object ResultWindow::getBackMenuButton()
 {
     return this->backMenuButton;
+}
+
+void ResultWindow::setBackMenuText(const char *string)
+{
+    this->winnerText.setString(string);
+    if (!strcmp("онаедхрекэ!", string))
+        this->winnerText.setPosition(15, 300);
+    else
+        this->winnerText.setPosition(150, 300);
+}
+
+Text &ResultWindow::getBackMenuText()
+{
+    return this->backMenuText;
 }
 
 void ResultWindow::createAllElements()
@@ -473,16 +503,16 @@ Figure Player::getFigure()
     return this->figure;
 }
 
-Step findOptimalMove(GameField &gameObject, Cell *gameField, bool isBot)
+Step Player::findOptimalMove(GameField &gameObject, Cell *gameField, bool isBot)
 {
     Step bestMove;
     (isBot) ? bestMove.score = -10 : bestMove.score = 10;
     Result result = gameObject.checkResult(gameObject, gameField);
     // Result result = gameField.checkResult(gameField.getPlayerFigure(), gameField.getBotFigure());
 
-    if (result.winner != NOT_EMPTY)
+    if (result.winner != Winner::Unknown)
     {
-        bestMove.score = result.winner;
+        bestMove.score = (int) result.winner;
     }
     else
     {
@@ -491,19 +521,8 @@ Step findOptimalMove(GameField &gameObject, Cell *gameField, bool isBot)
             if (gameField[i].figure == Figure::Empty)
             {
                 Cell newField[9];
-                copyArray(gameField, newField);
+                gameObject.copyArray(gameField, newField);
                 newField[i].figure = isBot ? gameObject.getBotFigure() : gameObject.getPlayerFigure();
-
-                // for (int i = 0; i < 9; i++)
-                // {
-                //     if (newField.getCells()[i].figure == Figure::Cross)
-                //         cout << "X ";
-                //     else if (newField.getCells()[i].figure == Figure::Zero)
-                //         cout << "O ";
-                //     else if (newField.getCells()[i].figure == Figure::Empty)
-                //         cout << "E ";
-                // }
-                // cout << endl << "i = " << i << endl;
 
                 if (isBot)
                 {

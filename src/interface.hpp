@@ -3,11 +3,6 @@
 #include <SFML/Graphics.hpp>
 #include <iostream>
 
-#define BOT_WIN 1
-#define DRAW 0
-#define PLAYER_WIN -1
-#define NOT_EMPTY 5
-
 using namespace sf;
 using namespace std;
 
@@ -24,10 +19,18 @@ enum class Type
     Diagonal,
 };
 
+enum class Winner
+{
+    Player = -1,
+    Draw,
+    Bot,
+    Unknown,
+};
+
 typedef struct
 {
     Type type;
-    int winner;
+    Winner winner;
     int pos;
 } Result;
 
@@ -61,7 +64,10 @@ typedef struct
 class Interface
 {
 public:
-    void mainButtonHover(Object &button, Text &text, Vector2i mousePos);
+    virtual void hover(Object *button, Text &text, Vector2i mousePos)
+    {
+
+    }
     virtual Object **getAllObjects()
     {
 
@@ -71,33 +77,36 @@ public:
 
     }
     Cursor &getCursor();
+    void setCursor(Cursor::Type cursorType);
     
 protected:
     virtual void createAllElements()
     {
-    } // � ������� ����
+
+    }
     Font font;
     Cursor cursor;
     bool isCursorHand;
+    Cursor::Type cursorType;
 };
 
 class StartWindow : public Interface
 {
 public:
+    void hover(Object *button, Text &text, Vector2i mousePos) override;
     void figuresHover(Vector2i mousePos);
     Object **getAllObjects() override;
     Text **getAllTexts() override;
-    Object *getFigureButtons();
-    Object &getStartButton();
     Text &getStartText();
     StartWindow()
     {
         createAllElements();
+        this->cursorType = Cursor::Arrow;
+        this->cursor.loadFromSystem(cursorType);
     }
 protected:
     void createAllElements() override;
-    Object figureButtons[2];
-    Object startButton;
+    Object buttons[3];
     Text headerText;
     Text startText;
 };
@@ -123,9 +132,12 @@ public:
     Result checkCells(Cell *gameField);
     Result checkResult(GameField &gameObject, Cell *gameField);
     void clearCells(GameField &gameField);
+    void copyArray(Cell *oldCells, Cell *newCells);
     GameField()
     {
         createAllElements();
+        this->cursorType = Cursor::Arrow;
+        this->cursor.loadFromSystem(cursorType);
     }
 
 protected:
@@ -142,12 +154,17 @@ protected:
 class ResultWindow : public Interface
 {
 public:
+    void hover(Object *button, Text &text, Vector2i mousePos) override;
     Object **getAllObjects() override;
     Text **getAllTexts() override;
     Object getBackMenuButton();
+    void setBackMenuText(const char *string);
+    Text &getBackMenuText();
     ResultWindow()
     {
         createAllElements();
+        this->cursorType = Cursor::Arrow;
+        this->cursor.loadFromSystem(cursorType);
     }
 protected:
     void createAllElements() override;
@@ -161,7 +178,7 @@ class Player
 public:
     void setFigure(Figure figure);
     Figure getFigure();
-    // Step findOptimalMove(GameField &gameField, Figure figure);
+    Step findOptimalMove(GameField &gameObject, Cell *gameField, bool isBot);
 
     Player(bool isBot = false)
     {
@@ -172,6 +189,3 @@ protected:
     Figure figure;
     bool isBot;
 };
-
-void copyArray(Cell *oldCells, Cell *newCells);
-Step findOptimalMove(GameField &gameObject, Cell *gameField, bool isBot);
