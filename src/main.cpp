@@ -3,28 +3,26 @@
 #include <windows.h>
 #include <time.h>
 
-#include <definitions.hpp>
+#include <iostream>
+
 #include <interface.hpp>
 
-int playerCharacter, botCharacter;
+using namespace std;
 
 int main(int argc, char *argv[])
 {
     setlocale(LC_ALL, "Rus");
-    Font font;
-    Cursor cursor;
-    Widgets widgets;
-    Texts messages;
-    RenderWindow window(VideoMode(600, 640), " рестики-нолики"); // —оздаем окно дл€ игры
 
-    createAllWidgets(widgets);
-    createAllTextWidgets(font, messages);
+    RenderWindow window(VideoMode(600, 640), " рестики-нолики");
+    StartWindow startWindow;
+    GameField gameField; // «десь 0 - пусто, 1 - крестик, 2 - нолик
+    ResultWindow resultWindow;
 
     bool isMenu = true, isGame = false, isEnd = false;
     bool isBotStep = false, isCursorHand = false, isRandom;
     Result result; // 1 - победа бота, 0 - ничь€, -1 победа игрока
-    int gameField[9] = { 0 }; // «десь 0 - пусто, 1 - крестик, 2 - нолик
-    Init player(widgets.main[0].texture), bot(widgets.main[0].texture);
+    
+    Player player, bot(true);
 
     while (window.isOpen())
     {
@@ -38,34 +36,40 @@ int main(int argc, char *argv[])
             }
             else if (Mouse::isButtonPressed(Mouse::Left) && isMenu)
             {
-                for (int i = 0; i < 3; i++)
+                for (int i = 0; i < 2; i++)
                 {
-                    if (widgets.main[i].sprite.getGlobalBounds().contains(mousePos.x, mousePos.y))
+                    if (startWindow.getFigureButtons()[i].sprite.getGlobalBounds().contains(mousePos.x, mousePos.y))
                     {
                         isMenu = false;
                         isGame = true;
-                        cursor.loadFromSystem(Cursor::Arrow);
+                        // cursor.loadFromSystem(Cursor::Arrow);
                         if (i == 2)
                         {
                             srand(time(NULL));
-                            playerCharacter = rand() % 2 + 1;
+                            player.setFigure((Figure) (rand() % 2 + 1));
                             isRandom = true;
                         }
                         else
                         {
-                            playerCharacter = i + 1;
+                            player.setFigure((Figure) (i + 1));
                             isRandom = false;
                         }
-                        (playerCharacter == 1) ? botCharacter = 2 : botCharacter = 1;
+                        if (player.getFigure() == Figure::Cross)
+                            bot.setFigure(Figure::Zero);
+                        else
+                            bot.setFigure(Figure::Cross);
 
-                        if (botCharacter == 1) // ≈сли бот - крестик
+                        gameField.setPlayerFigure(player.getFigure());
+                        gameField.setBotFigure(bot.getFigure());
+
+                        if (bot.getFigure() == Figure::Cross) // ≈сли бот - крестик
                         {
                             isBotStep = true;
-                            changeStepString(messages.step, BOT_MOVE);
+                            gameField.stepStringHover(Move::BotMove);
                         }
                         else
                         {
-                            changeStepString(messages.step, PLAYER_MOVE);
+                            gameField.stepStringHover(Move::PlayerMove);
                         }
                     }
                 }
@@ -74,25 +78,25 @@ int main(int argc, char *argv[])
             {
                 for (int i = 0; i < 9; i++)
                 {
-                    if ((player.cells[i].getGlobalBounds().contains(mousePos.x, mousePos.y)) && (!gameField[i] && !gameField[i]))
+                    if ((gameField.getCells()[i].cellSprite.getGlobalBounds().contains(mousePos.x, mousePos.y)) && (gameField.getCells()[i].figure == Figure::Empty))
                     {
-                        gameField[i] = playerCharacter;
-                        if ((result = checkResult(gameField)).winner != NOT_EMPTY)
+                        gameField.setCell(i, player.getFigure());
+                        if ((result = gameField.checkResult(gameField, gameField.getCells())).winner != NOT_EMPTY)
                         {
-                            changeLinePosition(result, widgets.line.sprite);
+                            gameField.changeLinePosition(result);
                             isEnd = true;
-                            changeStepString(messages.step, END_GAME);
+                            gameField.stepStringHover(Move::EndGame);
                             break;
                         }
                         isBotStep = true;
-                        changeStepString(messages.step, BOT_MOVE);
+                        gameField.stepStringHover(Move::BotMove);
                     }
                 }
             }
             else if (Mouse::isButtonPressed(Mouse::Left) && isEnd)
             {
                 isEnd = false;
-                if (widgets.main[2].sprite.getGlobalBounds().contains(mousePos.x, mousePos.y))
+                if (resultWindow.getBackMenuButton().sprite.getGlobalBounds().contains(mousePos.x, mousePos.y))
                 {
                     isMenu = true;
                     isRandom = false;
@@ -101,110 +105,131 @@ int main(int argc, char *argv[])
                 {
                     if (isRandom)
                     {
-                        int tempCharacter = playerCharacter;
-                        playerCharacter = botCharacter;
-                        botCharacter = tempCharacter;
+                        Figure tempFigure = player.getFigure();
+                        player.setFigure(bot.getFigure());
+                        bot.setFigure(tempFigure);
                     }
                     isGame = true;
-                    if (botCharacter == 1) // ≈сли бот - крестик
+                    if (bot.getFigure() == Figure::Cross) // ≈сли бот - крестик
                     {
                         isBotStep = true;
-                        changeStepString(messages.step, BOT_MOVE);
+                        gameField.stepStringHover(Move::BotMove);
                     }
                     else
                     {
-                        changeStepString(messages.step, PLAYER_MOVE);
+                        gameField.stepStringHover(Move::PlayerMove);
                     }
                 }
-                clearCells(gameField);
+                gameField.clearCells(gameField);
             }
         }
 
-        player.update(playerCharacter);
-        bot.update(botCharacter);
+        gameField.updateCells();
         window.clear(Color(20, 189, 172, 255));
         bool newCursor;
 
         if (isMenu)
         {
-            changeFigureTexture(widgets, mousePos, newCursor);
-            if (!newCursor)
-                changeButtonTexture(widgets, messages.start, mousePos, newCursor);
+            startWindow.figuresHover(mousePos);
+            startWindow.mainButtonHover(startWindow.getStartButton(), startWindow.getStartText(), mousePos);
+            // app.changeFigureTexture(mousePos, newCursor);
+            // if (!newCursor)
+            //     app.changeButtonTexture(messages.start, mousePos, newCursor);
+
             for (int i = 0; i < 3; i++)
-                    window.draw(widgets.main[i].sprite);
-            window.draw(messages.header);
-            window.draw(messages.start);
+                window.draw(startWindow.getAllObjects()[i]->sprite);
+            for (int i = 0; i < 2; i++)
+                window.draw(*startWindow.getAllTexts()[i]);
         }
         else if (isGame)
         {
             for (int i = 0; i < 9; i++)
-                if (gameField[i] == playerCharacter)
-                    window.draw(player.cells[i]);
-                else if (gameField[i] == botCharacter)
-                    window.draw(bot.cells[i]);
-
-            window.draw(messages.step);
-            window.draw(widgets.background.sprite);
+                if (gameField.getCells()[i].figure != Figure::Empty)
+                    window.draw(gameField.getCells()[i].cellSprite);
+            
+            for (int i = 0; i < 1; i++)
+                window.draw(gameField.getAllObjects()[i]->sprite);
+            window.draw(*gameField.getAllTexts()[0]);
             if (isEnd && result.winner != DRAW)
-                window.draw(widgets.line.sprite);
+            {
+                window.draw(gameField.getLineSprite());
+            }
         }
         else if (isEnd)
         {
             int figure = 0;
-            changeButtonTexture(widgets, messages.backMenu, mousePos, newCursor);
+            // resultWindow.mainButtonHover()
+            // app.changeButtonTexture(messages.backMenu, mousePos, newCursor);
+            Object *figureButtons = startWindow.getFigureButtons();
             if (result.winner != DRAW)
             {
-                (result.winner == PLAYER_WIN) ? figure = playerCharacter - 1 : figure = botCharacter - 1;
-                widgets.main[figure].sprite.setPosition(200, 100);
-                widgets.main[figure].sprite.setTextureRect(IntRect(200 * figure, 0, 200, 200));
-                window.draw(widgets.main[figure].sprite);
-                widgets.main[figure].sprite.setPosition(50 + 300 * figure, 180);
-                messages.result.setString("ѕќЅ≈ƒ»“≈Ћ№!");
-                messages.result.setPosition(15, 300);
+                Object *figureButtons = startWindow.getFigureButtons();
+                (result.winner == PLAYER_WIN) ? figure = ((int) player.getFigure()) - 1 : figure = ((int) bot.getFigure()) - 1;
+                figureButtons[figure].sprite.setPosition(200, 100);
+                figureButtons[figure].sprite.setTextureRect(IntRect(200 * figure, 0, 200, 200));
+                window.draw(figureButtons[figure].sprite);
+                figureButtons[figure].sprite.setPosition(50 + 300 * figure, 180);
+                // messages.result.setString("ѕќЅ≈ƒ»“≈Ћ№!");
+                // messages.result.setPosition(15, 300);
             }
             else
             {
-                widgets.main[0].sprite.setPosition(110, 100);
-                widgets.main[0].sprite.setTextureRect(IntRect(0, 0, 400, 200));
-                window.draw(widgets.main[0].sprite);
-                widgets.main[0].sprite.setPosition(50 + 300 * figure, 180);
-                messages.result.setString("Ќ»„№я!");
-                messages.result.setPosition(150, 300);
+                figureButtons[0].sprite.setPosition(110, 100);
+                figureButtons[0].sprite.setTextureRect(IntRect(0, 0, 400, 200));
+                window.draw(figureButtons[0].sprite);
+                figureButtons[0].sprite.setPosition(50 + 300 * figure, 180);
+                // messages.result.setString("Ќ»„№я!");
+                // messages.result.setPosition(150, 300);
             }
-            window.draw(widgets.main[2].sprite);
-            window.draw(messages.result); 
-            window.draw(messages.backMenu);
+            window.draw(resultWindow.getAllObjects()[0]->sprite);
+            for (int i = 0; i < 2; i++)
+                window.draw(*resultWindow.getAllTexts()[i]);
+            // window.draw(figureButtons[2].sprite);
+            // window.draw(messages.result); 
+            // window.draw(messages.backMenu);
         }
 
-        if (newCursor != isCursorHand && !isCursorHand)
-        {
-            cursor.loadFromSystem(Cursor::Hand);
-            isCursorHand = newCursor;
-        }
-        else if (newCursor != isCursorHand && isCursorHand)
-        {
-            cursor.loadFromSystem(Cursor::Arrow);
-            isCursorHand = newCursor;
-        }
+        // if (newCursor != isCursorHand && !isCursorHand)
+        // {
+        //     cursor.loadFromSystem(Cursor::Hand);
+        //     isCursorHand = newCursor;
+        // }
+        // else if (newCursor != isCursorHand && isCursorHand)
+        // {
+        //     cursor.loadFromSystem(Cursor::Arrow);
+        //     isCursorHand = newCursor;
+        // }
 
-        window.setMouseCursor(cursor);
+        // window.setMouseCursor(cursor);
         window.display();
 
         if (isBotStep)
         {
             Sleep(1000);
+            // for (int i = 0; i < 9; i++)
+            // {
+            //     if (gameField.getCells()[i].figure == Figure::Cross)
+            //         cout << "X ";
+            //     else if (gameField.getCells()[i].figure == Figure::Zero)
+            //         cout << "O ";
+            //     else if (gameField.getCells()[i].figure == Figure::Empty)
+            //         cout << "E ";
+            // }
+            // cout << endl;
+            Step move = findOptimalMove(gameField, gameField.getCells(), true);
+            cout << "SOSIT" << endl;
             isBotStep = false;
-            Step move = findOptimalMove(gameField, botCharacter);
-            gameField[move.pos] = botCharacter;
-            if ((result = checkResult(gameField)).winner != NOT_EMPTY)
+            cout << "gotcha " << move.pos << endl;
+            gameField.setCell(move.pos, bot.getFigure());
+            if ((result = gameField.checkResult(gameField, gameField.getCells())).winner != NOT_EMPTY)
             {
-                changeLinePosition(result, widgets.line.sprite);
-                changeStepString(messages.step, END_GAME);
+                gameField.changeLinePosition(result);
+                gameField.stepStringHover(Move::EndGame);
                 isEnd = true;
             }
             else
             {
-                changeStepString(messages.step, PLAYER_MOVE);
+                gameField.stepStringHover(Move::PlayerMove);
             }
         }
         else if (isGame && isEnd)
