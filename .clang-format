@@ -1,0 +1,4 @@
+BasedOnStyle: Microsoft
+BreakBeforeBraces: Allman
+ColumnLimit: 0
+IndentCaseLabels: true

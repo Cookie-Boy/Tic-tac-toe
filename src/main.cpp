@@ -1,13 +1,9 @@
 #include <SFML/Graphics.hpp>
 #include <locale.h>
-#include <windows.h>
 #include <time.h>
-
-#include <iostream>
+#include <windows.h>
 
 #include <interface.hpp>
-
-using namespace std;
 
 int main(int argc, char *argv[])
 {
@@ -15,14 +11,14 @@ int main(int argc, char *argv[])
 
     RenderWindow window(VideoMode(600, 640), "Крестики-нолики");
     StartWindow startWindow;
-    GameField gameField;
+    GameWindow gameWindow;
     ResultWindow resultWindow;
 
-    bool isMenu = true, isGame = false, isEnd = false;
-    bool isBotStep = false, isCursorHand = false, isRandom;
+    bool isBotStep = false, isRandom;
     Result result;
-    
-    Player player, bot(true);
+
+    Player player, bot;
+    bot.setGameWindow(&gameWindow);
 
     while (window.isOpen())
     {
@@ -33,25 +29,24 @@ int main(int argc, char *argv[])
             if (event.type == Event::Closed)
                 window.close();
 
-            if (Mouse::isButtonPressed(Mouse::Left) && isMenu)
+            else if (Mouse::isButtonPressed(Mouse::Left) && startWindow.isActive())
             {
                 for (int i = 0; i < 3; i++)
                 {
                     if (startWindow.getAllObjects()[i]->sprite.getGlobalBounds().contains(mousePos.x, mousePos.y))
                     {
-                        isMenu = false;
-                        isGame = true;
+                        startWindow.setActive(false);
+                        gameWindow.setActive(true);
 
                         if (i == 2)
                         {
                             srand(time(NULL));
-                            player.setFigure((Figure) (rand() % 2 + 1));
+                            player.setFigure((Figure)(rand() % 2 + 1));
                             isRandom = true;
                         }
                         else
                         {
-                            // cursor.loadFromSystem(Cursor::Arrow);
-                            player.setFigure((Figure) (i + 1));
+                            player.setFigure((Figure)(i + 1));
                             isRandom = false;
                         }
 
@@ -60,47 +55,47 @@ int main(int argc, char *argv[])
                         else
                             bot.setFigure(Figure::Cross);
 
-                        gameField.setPlayerFigure(player.getFigure());
-                        gameField.setBotFigure(bot.getFigure());
+                        gameWindow.setPlayerFigure(player.getFigure());
+                        gameWindow.setBotFigure(bot.getFigure());
 
-                        if (bot.getFigure() == Figure::Cross) // Если бот - крестик
+                        if (bot.getFigure() == Figure::Cross) // Крестики ходят первыми
                         {
                             isBotStep = true;
-                            gameField.stepStringHover(Move::BotMove);
+                            gameWindow.changeStepString(Move::Bot);
                         }
                         else
                         {
-                            gameField.stepStringHover(Move::PlayerMove);
+                            gameWindow.changeStepString(Move::Player);
                         }
                         break;
                     }
                 }
             }
-            else if (Mouse::isButtonPressed(Mouse::Left) && isGame && !isEnd)
+            else if (Mouse::isButtonPressed(Mouse::Left) && gameWindow.isActive())
             {
                 for (int i = 0; i < 9; i++)
                 {
-                    if ((gameField.getCells()[i].cellSprite.getGlobalBounds().contains(mousePos.x, mousePos.y)) && (gameField.getCells()[i].figure == Figure::Empty))
+                    if ((gameWindow.getCells()[i].sprite.getGlobalBounds().contains(mousePos.x, mousePos.y)) && (gameWindow.getCells()[i].figure == Figure::Empty))
                     {
-                        gameField.setCell(i, player.getFigure());
-                        if ((result = gameField.checkResult(gameField, gameField.getCells())).winner != Winner::Unknown)
+                        gameWindow.setCell(i, player.getFigure());
+                        if ((result = gameWindow.checkResult(gameWindow, gameWindow.getCells())).winner != Winner::Unknown)
                         {
-                            gameField.changeLinePosition(result);
-                            isEnd = true;
-                            gameField.stepStringHover(Move::EndGame);
+                            gameWindow.changeLinePosition(result);
+                            resultWindow.setActive(true);
+                            gameWindow.changeStepString(Move::EndGame);
                             break;
                         }
                         isBotStep = true;
-                        gameField.stepStringHover(Move::BotMove);
+                        gameWindow.changeStepString(Move::Bot);
                     }
                 }
             }
-            else if (Mouse::isButtonPressed(Mouse::Left) && isEnd)
+            else if (Mouse::isButtonPressed(Mouse::Left) && resultWindow.isActive())
             {
-                isEnd = false;
-                if (resultWindow.getBackMenuButton().sprite.getGlobalBounds().contains(mousePos.x, mousePos.y))
+                resultWindow.setActive(false);
+                if (resultWindow.getAllObjects()[0]->sprite.getGlobalBounds().contains(mousePos.x, mousePos.y))
                 {
-                    isMenu = true;
+                    startWindow.setActive(true);
                     isRandom = false;
                 }
                 else
@@ -110,34 +105,31 @@ int main(int argc, char *argv[])
                         Figure tempFigure = player.getFigure();
                         player.setFigure(bot.getFigure());
                         bot.setFigure(tempFigure);
-                        gameField.setPlayerFigure(player.getFigure());
-                        gameField.setBotFigure(bot.getFigure());
+                        gameWindow.setPlayerFigure(player.getFigure());
+                        gameWindow.setBotFigure(bot.getFigure());
                     }
 
-                    isGame = true;
-                    if (bot.getFigure() == Figure::Cross) // Если бот - крестик
+                    gameWindow.setActive(true);
+                    if (bot.getFigure() == Figure::Cross) // Крестики ходят первыми
                     {
                         isBotStep = true;
-                        gameField.stepStringHover(Move::BotMove);
+                        gameWindow.changeStepString(Move::Bot);
                     }
                     else
                     {
-                        gameField.stepStringHover(Move::PlayerMove);
+                        gameWindow.changeStepString(Move::Player);
                     }
                 }
-                gameField.clearCells(gameField);
+                gameWindow.clearCells();
             }
         }
 
-        gameField.updateCells();
+        gameWindow.updateCells();
         window.clear(Color(20, 189, 172, 255));
-        bool newCursor;
 
-        if (isMenu)
+        if (startWindow.isActive())
         {
             startWindow.hover(startWindow.getAllObjects()[2], startWindow.getStartText(), mousePos);
-            // if (!newCursor)
-            //     app.changeButtonTexture(messages.start, mousePos, newCursor);
 
             for (int i = 0; i < 3; i++)
                 window.draw(startWindow.getAllObjects()[i]->sprite);
@@ -145,29 +137,29 @@ int main(int argc, char *argv[])
                 window.draw(*startWindow.getAllTexts()[i]);
             window.setMouseCursor(startWindow.getCursor());
         }
-        else if (isGame)
+        else if (gameWindow.isActive())
         {
             for (int i = 0; i < 9; i++)
-                if (gameField.getCells()[i].figure != Figure::Empty)
-                    window.draw(gameField.getCells()[i].cellSprite);
-            
+                if (gameWindow.getCells()[i].figure != Figure::Empty)
+                    window.draw(gameWindow.getCells()[i].sprite);
+
             for (int i = 0; i < 1; i++)
-                window.draw(gameField.getAllObjects()[i]->sprite);
-            window.draw(*gameField.getAllTexts()[0]);
-            if (isEnd && result.winner != Winner::Draw)
+                window.draw(gameWindow.getAllObjects()[i]->sprite);
+            window.draw(*gameWindow.getAllTexts()[0]);
+            if (resultWindow.isActive() && result.winner != Winner::Draw)
             {
-                window.draw(gameField.getLineSprite());
+                window.draw(gameWindow.getLineSprite());
             }
-            window.setMouseCursor(gameField.getCursor());
+            window.setMouseCursor(gameWindow.getCursor());
         }
-        else if (isEnd)
+        else if (resultWindow.isActive())
         {
             int figure = 0;
             resultWindow.hover(resultWindow.getAllObjects()[0], resultWindow.getBackMenuText(), mousePos);
             Object **figureButtons = startWindow.getAllObjects();
             if (result.winner != Winner::Draw)
             {
-                (result.winner == Winner::Player) ? figure = ((int) player.getFigure()) - 1 : figure = ((int) bot.getFigure()) - 1;
+                (result.winner == Winner::Player) ? figure = ((int)player.getFigure()) - 1 : figure = ((int)bot.getFigure()) - 1;
                 figureButtons[figure]->sprite.setPosition(200, 100);
                 figureButtons[figure]->sprite.setTextureRect(IntRect(200 * figure, 0, 200, 200));
                 window.draw(figureButtons[figure]->sprite);
@@ -188,40 +180,29 @@ int main(int argc, char *argv[])
             window.setMouseCursor(resultWindow.getCursor());
         }
 
-        // if (newCursor != isCursorHand && !isCursorHand)
-        // {
-        //     cursor.loadFromSystem(Cursor::Hand);
-        //     isCursorHand = newCursor;
-        // }
-        // else if (newCursor != isCursorHand && isCursorHand)
-        // {
-            // cursor.loadFromSystem(Cursor::Arrow);
-        //     isCursorHand = newCursor;
-        // }
-
         window.display();
 
         if (isBotStep)
         {
             Sleep(1000);
-            Step move = bot.findOptimalMove(gameField, gameField.getCells(), true);
+            Step move = bot.findOptimalMove(gameWindow.getCells(), true);
             isBotStep = false;
-            gameField.setCell(move.pos, bot.getFigure());
-            if ((result = gameField.checkResult(gameField, gameField.getCells())).winner != Winner::Unknown)
+            gameWindow.setCell(move.pos, bot.getFigure());
+            if ((result = gameWindow.checkResult(gameWindow, gameWindow.getCells())).winner != Winner::Unknown)
             {
-                gameField.changeLinePosition(result);
-                gameField.stepStringHover(Move::EndGame);
-                isEnd = true;
+                gameWindow.changeLinePosition(result);
+                gameWindow.changeStepString(Move::EndGame);
+                resultWindow.setActive(true);
             }
             else
             {
-                gameField.stepStringHover(Move::PlayerMove);
+                gameWindow.changeStepString(Move::Player);
             }
         }
-        else if (isGame && isEnd)
+        else if (gameWindow.isActive() && resultWindow.isActive())
         {
             Sleep(1000);
-            isGame = false;
+            gameWindow.setActive(false);
         }
     }
 

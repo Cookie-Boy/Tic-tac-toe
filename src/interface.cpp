@@ -5,13 +5,24 @@
 
 // Interface
 
+void Interface::hover(Object *button, Text &text, Vector2i mousePos)
+{
+}
+
+Object **Interface::getAllObjects()
+{
+}
+
+Text **Interface::getAllTexts()
+{
+}
+
 void Interface::setCursor(Cursor::Type cursorType)
 {
     if (cursorType != this->cursorType)
     {
         this->cursor.loadFromSystem(cursorType);
         this->cursorType = cursorType;
-        cout << "hop" << endl;
     }
 }
 
@@ -20,24 +31,24 @@ Cursor &Interface::getCursor()
     return this->cursor;
 }
 
+void Interface::setActive(bool active)
+{
+    this->active = active;
+}
+
+bool Interface::isActive()
+{
+    return this->active;
+}
+
+void Interface::createAllElements()
+{
+}
+
 // StartWindow
 
 void StartWindow::hover(Object *button, Text &text, Vector2i mousePos)
 {
-    if (button->sprite.getGlobalBounds().contains(mousePos.x, mousePos.y))
-    {
-        button->sprite.setTextureRect(IntRect(0, 80, 350, 80));
-        text.setFillColor(Color(84, 84, 84, 255));
-        setCursor(Cursor::Hand);
-        return;
-    }
-    else
-    {
-        button->sprite.setTextureRect(IntRect(0, 0, 350, 80));
-        text.setFillColor(Color(245, 236, 211, 255));
-        // setCursor(Cursor::Arrow);
-    }
-
     for (int i = 0; i < 2; i++)
     {
         if (buttons[i].sprite.getGlobalBounds().contains(mousePos.x, mousePos.y))
@@ -49,9 +60,20 @@ void StartWindow::hover(Object *button, Text &text, Vector2i mousePos)
         else
         {
             buttons[i].sprite.setTextureRect(IntRect(200 * i, 0, 200, 200));
-            // setCursor(Cursor::Arrow);
-            // isCursorHand = false;
         }
+    }
+
+    if (button->sprite.getGlobalBounds().contains(mousePos.x, mousePos.y))
+    {
+        button->sprite.setTextureRect(IntRect(0, 80, 350, 80));
+        text.setFillColor(Color(84, 84, 84, 255));
+        setCursor(Cursor::Hand);
+        return;
+    }
+    else
+    {
+        button->sprite.setTextureRect(IntRect(0, 0, 350, 80));
+        text.setFillColor(Color(245, 236, 211, 255));
     }
 
     setCursor(Cursor::Arrow);
@@ -59,16 +81,15 @@ void StartWindow::hover(Object *button, Text &text, Vector2i mousePos)
 
 Object **StartWindow::getAllObjects()
 {
-    Object **objects = new Object *[3];
-    objects[0] = &buttons[0];
-    objects[1] = &buttons[1];
-    objects[2] = &buttons[2];
+    static Object *objects[3];
+    for (int i = 0; i < 3; i++)
+        objects[i] = &buttons[i];
     return objects;
 }
 
 Text **StartWindow::getAllTexts()
 {
-    Text **texts = new Text *[2];
+    static Text *texts[2];
     texts[0] = &headerText;
     texts[1] = &startText;
     return texts;
@@ -77,6 +98,16 @@ Text **StartWindow::getAllTexts()
 Text &StartWindow::getStartText()
 {
     return this->startText;
+}
+
+// Constructor for StartWindow
+
+StartWindow::StartWindow()
+{
+    createAllElements();
+    this->cursorType = Cursor::Arrow;
+    this->cursor.loadFromSystem(cursorType);
+    this->active = true;
 }
 
 void StartWindow::createAllElements()
@@ -113,35 +144,35 @@ void StartWindow::createAllElements()
     startText.setPosition(135, 485);
 }
 
-// GameField
+// GameWindow
 
-Object **GameField::getAllObjects()
+Object **GameWindow::getAllObjects()
 {
-    Object **objects = new Object *[1];
+    static Object *objects[1];
     objects[0] = &background;
     return objects;
 }
 
-Text **GameField::getAllTexts()
+Text **GameWindow::getAllTexts()
 {
-    Text **texts = new Text *[1];
+    static Text *texts[1];
     texts[0] = &stepText;
     return texts;
 }
 
-void GameField::stepStringHover(Move move)
+void GameWindow::changeStepString(Move move)
 {
-    if (move == Move::PlayerMove)
+    if (move == Move::Player)
     {
         stepText.setFillColor(Color(84, 84, 84, 255));
         stepText.setPosition(227, 598);
         stepText.setString("“вой ход!");
     }
-    else if (move == Move::BotMove)
+    else if (move == Move::Bot)
     {
         stepText.setFillColor(Color(236, 234, 210, 255));
         stepText.setPosition(227, 598);
-        stepText.setString("’од бота"); 
+        stepText.setString("’од бота");
     }
     else if (move == Move::EndGame)
     {
@@ -151,29 +182,80 @@ void GameField::stepStringHover(Move move)
     }
 }
 
-void GameField::updateCells()
+void GameWindow::updateCells()
 {
     for (int i = 0; i < 9; i++)
     {
         if (cells[i].figure == Figure::Cross || cells[i].figure == Figure::Empty)
-            cells[i].cellSprite.setTextureRect(IntRect(0, 0, 200, 200));
+            cells[i].sprite.setTextureRect(IntRect(0, 0, 200, 200));
         else if (cells[i].figure == Figure::Zero)
-            cells[i].cellSprite.setTextureRect(IntRect(200, 0, 200, 200));
+            cells[i].sprite.setTextureRect(IntRect(200, 0, 200, 200));
     }
 }
 
-void GameField::setCell(int index, Figure figure)
+void GameWindow::setCell(int index, Figure figure)
 {
     cells[index].figure = figure;
-    // cells[index].cellSprite.setTextureRect(IntRect(200 * (((int) figure) - 1), 0, 200, 200));
 }
 
-Cell *GameField::getCells()
+Cell *GameWindow::getCells()
 {
     return this->cells;
 }
 
-Result GameField::checkHorizontal(Cell *gameField)
+void GameWindow::setPlayerFigure(Figure playerFigure)
+{
+    this->playerFigure = playerFigure;
+}
+
+Figure GameWindow::getPlayerFigure()
+{
+    return this->playerFigure;
+}
+
+void GameWindow::setBotFigure(Figure botFigure)
+{
+    this->botFigure = botFigure;
+}
+
+Figure GameWindow::getBotFigure()
+{
+    return this->botFigure;
+}
+
+void GameWindow::changeLinePosition(Result result)
+{
+    if (result.type == Type::Horizontal)
+    {
+        line.sprite.setTextureRect(IntRect(0, 0, 600, 10));
+        line.sprite.setRotation(0);
+        int distance = ((result.pos / 3) * 200) + 100;
+        line.sprite.setPosition(0, distance);
+    }
+    else if (result.type == Type::Vertical)
+    {
+        line.sprite.setTextureRect(IntRect(0, 0, 600, 10));
+        line.sprite.setRotation(90);
+        int distance = (result.pos * 200) + 105;
+        line.sprite.setPosition(distance, 0);
+    }
+    else if (result.type == Type::Diagonal)
+    {
+        if (result.pos == 1)
+            line.sprite.setTextureRect(IntRect(0, 10, 600, 600));
+        else if (result.pos == 2)
+            line.sprite.setTextureRect(IntRect(600, 10, -600, 600));
+        line.sprite.setRotation(0);
+        line.sprite.setPosition(0, 0);
+    }
+}
+
+Sprite &GameWindow::getLineSprite()
+{
+    return this->line.sprite;
+}
+
+Result GameWindow::checkHorizontal(Cell *gameField)
 {
     Figure playerFigure = this->getPlayerFigure();
     Figure botFigure = this->getBotFigure();
@@ -210,7 +292,7 @@ Result GameField::checkHorizontal(Cell *gameField)
     return result;
 }
 
-Result GameField::checkVertical(Cell *gameField)
+Result GameWindow::checkVertical(Cell *gameField)
 {
     Figure playerFigure = this->getPlayerFigure();
     Figure botFigure = this->getBotFigure();
@@ -247,7 +329,7 @@ Result GameField::checkVertical(Cell *gameField)
     return result;
 }
 
-Result GameField::checkDiagonal(Cell *gameField)
+Result GameWindow::checkDiagonal(Cell *gameField)
 {
     Figure playerFigure = this->getPlayerFigure();
     Figure botFigure = this->getBotFigure();
@@ -303,7 +385,7 @@ Result GameField::checkDiagonal(Cell *gameField)
     return result;
 }
 
-Result GameField::checkCells(Cell *gameField)
+Result GameWindow::checkCells(Cell *gameField)
 {
     Result result;
     int count = 0;
@@ -321,94 +403,52 @@ Result GameField::checkCells(Cell *gameField)
     return result;
 }
 
-Result GameField::checkResult(GameField &gameObject, Cell *gameField)
+Result GameWindow::checkResult(GameWindow &gameWindow, Cell *gameField)
 {
     Result result;
-    if ((result = gameObject.checkHorizontal(gameField)).winner != Winner::Unknown)
+    if ((result = gameWindow.checkHorizontal(gameField)).winner != Winner::Unknown)
         return result;
-    if ((result = gameObject.checkVertical(gameField)).winner != Winner::Unknown)
+    if ((result = gameWindow.checkVertical(gameField)).winner != Winner::Unknown)
         return result;
-    if ((result = gameObject.checkDiagonal(gameField)).winner != Winner::Unknown)
+    if ((result = gameWindow.checkDiagonal(gameField)).winner != Winner::Unknown)
         return result;
-    return gameObject.checkCells(gameField);
+    return checkCells(gameField);
 }
 
-void GameField::clearCells(GameField &gameField)
+void GameWindow::clearCells()
 {
     for (int i = 0; i < 9; i++)
-        gameField.setCell(i, Figure::Empty);
+        this->cells[i].figure = Figure::Empty;
 }
 
-void GameField::copyArray(Cell *oldCells, Cell *newCells)
+void GameWindow::copyArray(Cell *oldCells, Cell *newCells)
 {
     for (int i = 0; i < 9; i++)
         newCells[i].figure = oldCells[i].figure;
 }
 
-void GameField::setPlayerFigure(Figure playerFigure)
+// Constructor for GameWindow
+
+GameWindow::GameWindow()
 {
-    this->playerFigure = playerFigure;
+    createAllElements();
+    this->cursorType = Cursor::Arrow;
+    this->cursor.loadFromSystem(cursorType);
+    this->active = false;
 }
 
-Figure GameField::getPlayerFigure()
-{
-    return this->playerFigure;
-}
-
-void GameField::setBotFigure(Figure botFigure)
-{
-    this->botFigure = botFigure;
-}
-
-Figure GameField::getBotFigure()
-{
-    return this->botFigure;
-}
-
-void GameField::changeLinePosition(Result result)
-{
-    if (result.type == Type::Horizontal)
-    {
-        line.sprite.setTextureRect(IntRect(0, 0, 600, 10));
-        line.sprite.setRotation(0);
-        int distance = ((result.pos / 3) * 200) + 100;
-        line.sprite.setPosition(0, distance);
-    }
-    else if (result.type == Type::Vertical)
-    {
-        line.sprite.setTextureRect(IntRect(0, 0, 600, 10));
-        line.sprite.setRotation(90);
-        int distance = (result.pos * 200) + 105;
-        line.sprite.setPosition(distance, 0);
-    }
-    else if (result.type == Type::Diagonal)
-    {
-        if (result.pos == 1)
-            line.sprite.setTextureRect(IntRect(0, 10, 600, 600));
-        else if (result.pos == 2)
-            line.sprite.setTextureRect(IntRect(600, 10, -600, 600));
-        line.sprite.setRotation(0);
-        line.sprite.setPosition(0, 0);
-    }
-}
-
-Sprite &GameField::getLineSprite()
-{
-    return this->line.sprite;
-}
-
-void GameField::createAllElements()
+void GameWindow::createAllElements()
 {
     for (int i = 0; i < 9; i++)
     {
-        cells[i].cellTexture.loadFromFile("img/figures.png");
-        cells[i].cellSprite.setTexture(cells[i].cellTexture);
+        cells[i].texture.loadFromFile("img/figures.png");
+        cells[i].sprite.setTexture(cells[i].texture);
         cells[i].figure = Figure::Empty;
     }
 
     for (int i = 0; i < 3; i++)
         for (int j = 0; j < 3; j++)
-            cells[i * 3 + j].cellSprite.setPosition(200 * j, 200 * i);
+            cells[i * 3 + j].sprite.setPosition(200 * j, 200 * i);
 
     font.loadFromFile("utils/RobotoSerif.ttf");
     stepText.setFont(font);
@@ -441,22 +481,17 @@ void ResultWindow::hover(Object *button, Text &text, Vector2i mousePos)
 
 Object **ResultWindow::getAllObjects()
 {
-    Object **objects = new Object *[1];
+    static Object *objects[1];
     objects[0] = &backMenuButton;
     return objects;
 }
 
 Text **ResultWindow::getAllTexts()
 {
-    Text **texts = new Text *[2];
+    static Text *texts[2];
     texts[0] = &winnerText;
     texts[1] = &backMenuText;
     return texts;
-}
-
-Object ResultWindow::getBackMenuButton()
-{
-    return this->backMenuButton;
 }
 
 void ResultWindow::setBackMenuText(const char *string)
@@ -471,6 +506,16 @@ void ResultWindow::setBackMenuText(const char *string)
 Text &ResultWindow::getBackMenuText()
 {
     return this->backMenuText;
+}
+
+// Constructor for ResultWindow
+
+ResultWindow::ResultWindow()
+{
+    createAllElements();
+    this->cursorType = Cursor::Arrow;
+    this->cursor.loadFromSystem(cursorType);
+    this->active = false;
 }
 
 void ResultWindow::createAllElements()
@@ -493,6 +538,11 @@ void ResultWindow::createAllElements()
     backMenuText.setPosition(130, 490);
 }
 
+void Player::setGameWindow(GameWindow *gameWindow)
+{
+    this->gameWindow = gameWindow;
+}
+
 void Player::setFigure(Figure figure)
 {
     this->figure = figure;
@@ -503,44 +553,42 @@ Figure Player::getFigure()
     return this->figure;
 }
 
-Step Player::findOptimalMove(GameField &gameObject, Cell *gameField, bool isBot)
+Step Player::findOptimalMove(Cell *gameField, bool isBotMove)
 {
     Step bestMove;
-    (isBot) ? bestMove.score = -10 : bestMove.score = 10;
-    Result result = gameObject.checkResult(gameObject, gameField);
-    // Result result = gameField.checkResult(gameField.getPlayerFigure(), gameField.getBotFigure());
+    isBotMove ? bestMove.score = -10 : bestMove.score = 10;
+    Result result = gameWindow->checkResult(*gameWindow, gameField);
 
     if (result.winner != Winner::Unknown)
     {
-        bestMove.score = (int) result.winner;
+        bestMove.score = (int)result.winner;
+        return bestMove;
     }
-    else
+    
+    for (int i = 0; i < 9; i++)
     {
-        for (int i = 0; i < 9; i++)
+        if (gameField[i].figure == Figure::Empty)
         {
-            if (gameField[i].figure == Figure::Empty)
-            {
-                Cell newField[9];
-                gameObject.copyArray(gameField, newField);
-                newField[i].figure = isBot ? gameObject.getBotFigure() : gameObject.getPlayerFigure();
+            Cell newField[9];
+            gameWindow->copyArray(gameField, newField);
+            newField[i].figure = isBotMove ? gameWindow->getBotFigure() : gameWindow->getPlayerFigure();
 
-                if (isBot)
+            if (isBotMove)
+            {
+                Step currentMove = findOptimalMove(newField, false);
+                if (currentMove.score > bestMove.score)
                 {
-                    Step currentMove = findOptimalMove(gameObject, newField, false);
-                    if (currentMove.score > bestMove.score)
-                    {
-                        bestMove.score = currentMove.score;
-                        bestMove.pos = i;
-                    }
+                    bestMove.score = currentMove.score;
+                    bestMove.pos = i;
                 }
-                else
+            }
+            else
+            {
+                Step currentMove = findOptimalMove(newField, true);
+                if (currentMove.score < bestMove.score)
                 {
-                    Step currentMove = findOptimalMove(gameObject, newField, true);
-                    if (currentMove.score < bestMove.score)
-                    {
-                        bestMove.score = currentMove.score;
-                        bestMove.pos = i;
-                    }
+                    bestMove.score = currentMove.score;
+                    bestMove.pos = i;
                 }
             }
         }
