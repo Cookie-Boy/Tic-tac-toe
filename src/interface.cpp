@@ -130,14 +130,14 @@ void StartWindow::createAllElements()
 
     font.loadFromFile("utils/RobotoSerif.ttf");
 
-    headerText.setString("Âûáåðè ôèãóðó");
+    headerText.setString("SELECT FIGURE");
     headerText.setFont(font);
     headerText.setCharacterSize(60);
     headerText.setFillColor(Color::Black);
     headerText.setStyle(Text::Bold);
     headerText.setPosition(60, 50);
 
-    startText.setString("ÍÀ×ÀÒÜ ÈÃÐÓ");
+    startText.setString("START GAME");
     startText.setFont(font);
     startText.setCharacterSize(43);
     startText.setStyle(Text::Bold);
@@ -166,19 +166,31 @@ void GameWindow::changeStepString(Move move)
     {
         stepText.setFillColor(Color(84, 84, 84, 255));
         stepText.setPosition(227, 598);
-        stepText.setString("Òâîé õîä!");
+        stepText.setString("Your step!");
     }
     else if (move == Move::Bot)
     {
         stepText.setFillColor(Color(236, 234, 210, 255));
         stepText.setPosition(227, 598);
-        stepText.setString("Õîä áîòà");
+        stepText.setString("Bot's step!");
+    }
+    else if (move == Move::Enemy)
+    {
+        stepText.setFillColor(Color(236, 234, 210, 255));
+        stepText.setPosition(227, 598);
+        stepText.setString("Player 2 step!");
+    }
+    else if (move == Move::Waiting)
+    {
+        stepText.setFillColor(Color(236, 234, 210, 255));
+        stepText.setPosition(227, 598);
+        stepText.setString("Waiting for player...");
     }
     else if (move == Move::EndGame)
     {
         stepText.setFillColor(Color(84, 84, 84, 255));
         stepText.setPosition(185, 598);
-        stepText.setString("Èãðà îêîí÷åíà");
+        stepText.setString("End game!");
     }
 }
 
@@ -213,14 +225,14 @@ Figure GameWindow::getPlayerFigure()
     return this->playerFigure;
 }
 
-void GameWindow::setBotFigure(Figure botFigure)
+void GameWindow::setEnemyFigure(Figure enemyFigure)
 {
-    this->botFigure = botFigure;
+    this->enemyFigure = enemyFigure;
 }
 
-Figure GameWindow::getBotFigure()
+Figure GameWindow::getEnemyFigure()
 {
-    return this->botFigure;
+    return this->enemyFigure;
 }
 
 void GameWindow::changeLinePosition(Result result)
@@ -258,7 +270,7 @@ Sprite &GameWindow::getLineSprite()
 Result GameWindow::checkHorizontal(Cell *gameField)
 {
     Figure playerFigure = this->getPlayerFigure();
-    Figure botFigure = this->getBotFigure();
+    Figure botFigure = this->getEnemyFigure();
     Result result;
     result.type = Type::Horizontal;
     result.winner = Winner::Unknown;
@@ -295,7 +307,7 @@ Result GameWindow::checkHorizontal(Cell *gameField)
 Result GameWindow::checkVertical(Cell *gameField)
 {
     Figure playerFigure = this->getPlayerFigure();
-    Figure botFigure = this->getBotFigure();
+    Figure botFigure = this->getEnemyFigure();
     Result result;
     result.type = Type::Vertical;
     result.winner = Winner::Unknown;
@@ -332,7 +344,7 @@ Result GameWindow::checkVertical(Cell *gameField)
 Result GameWindow::checkDiagonal(Cell *gameField)
 {
     Figure playerFigure = this->getPlayerFigure();
-    Figure botFigure = this->getBotFigure();
+    Figure botFigure = this->getEnemyFigure();
     Result result;
     result.type = Type::Diagonal;
     result.winner = Winner::Unknown;
@@ -497,7 +509,7 @@ Text **ResultWindow::getAllTexts()
 void ResultWindow::setBackMenuText(const char *string)
 {
     this->winnerText.setString(string);
-    if (!strcmp("ÏÎÁÅÄÈÒÅËÜ!", string))
+    if (!strcmp("WINNER!", string))
         this->winnerText.setPosition(15, 300);
     else
         this->winnerText.setPosition(150, 300);
@@ -531,7 +543,7 @@ void ResultWindow::createAllElements()
     winnerText.setFillColor(Color::Black);
     winnerText.setStyle(Text::Bold);
 
-    backMenuText.setString("ÃËÀÂÍÎÅ ÌÅÍÞ");
+    backMenuText.setString("MAIN MENU");
     backMenuText.setFont(font);
     backMenuText.setCharacterSize(37);
     backMenuText.setStyle(Text::Bold);
@@ -571,7 +583,7 @@ Step Player::findOptimalMove(Cell *gameField, bool isBotMove)
         {
             Cell newField[9];
             gameWindow->copyArray(gameField, newField);
-            newField[i].figure = isBotMove ? gameWindow->getBotFigure() : gameWindow->getPlayerFigure();
+            newField[i].figure = isBotMove ? gameWindow->getEnemyFigure() : gameWindow->getPlayerFigure();
 
             if (isBotMove)
             {

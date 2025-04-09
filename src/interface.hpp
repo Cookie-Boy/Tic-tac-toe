@@ -38,17 +38,19 @@ typedef struct
     Sprite sprite;
 } Object;
 
-enum class Figure
+enum class Figure : uint8_t
 {
-    Empty,
-    Cross,
-    Zero,
+    Empty = 0,
+    Cross = 1,
+    Zero = 2
 };
 
 enum class Move
 {
     Player,
     Bot,
+    Enemy,
+    Waiting,
     EndGame,
 };
 
@@ -106,8 +108,8 @@ public:
     Cell *getCells();
     void setPlayerFigure(Figure playerFigure);
     Figure getPlayerFigure();
-    void setBotFigure(Figure botFigure);
-    Figure getBotFigure();
+    void setEnemyFigure(Figure botFigure);
+    Figure getEnemyFigure();
     void changeLinePosition(Result result);
     Sprite &getLineSprite();
     Result checkHorizontal(Cell *gameField);
@@ -118,6 +120,14 @@ public:
     void clearCells();
     void copyArray(Cell *oldCells, Cell *newCells);
 
+    bool getWaitMode() {
+        return this->waitMode;
+    }
+
+    void setWaitMode(bool waitMode) {
+        this->waitMode = waitMode;
+    }
+
     GameWindow();
 
 protected:
@@ -126,10 +136,11 @@ protected:
     Object line;
     Text stepText;
     Cell cells[9];
-    Figure botFigure;
+    Figure enemyFigure;
     Figure playerFigure;
     bool botStep;
     bool randomMode;
+    bool waitMode;
 };
 
 class ResultWindow : public Interface
