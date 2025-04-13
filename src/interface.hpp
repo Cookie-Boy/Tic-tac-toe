@@ -151,6 +151,7 @@ public:
     Text **getAllTexts() override;
     void setBackMenuText(const char *string);
     Text &getBackMenuText();
+    void setWaitText(const char *string);
 
     ResultWindow();
 
@@ -159,6 +160,7 @@ protected:
     Object backMenuButton;
     Text winnerText;
     Text backMenuText;
+    Text waitText;
 };
 
 class Player

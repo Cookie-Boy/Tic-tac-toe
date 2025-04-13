@@ -427,11 +427,26 @@ Result GameWindow::checkResult(GameWindow &gameWindow, Cell *gameField)
     return checkCells(gameField);
 }
 
+// void GameWindow::clearCells()
+// {
+//     for (int i = 0; i < 9; i++)
+//         this->cells[i].figure = Figure::Empty;
+// }
+
 void GameWindow::clearCells()
 {
     for (int i = 0; i < 9; i++)
-        this->cells[i].figure = Figure::Empty;
+    {
+        cells[i].figure = Figure::Empty;
+        cells[i].texture.loadFromFile("img/figures.png");
+        cells[i].sprite.setTexture(cells[i].texture);
+        cells[i].sprite.setTextureRect(IntRect(0, 0, 200, 200));
+        int row = i / 3;
+        int col = i % 3;
+        cells[i].sprite.setPosition(200 * col, 200 * row);
+    }
 }
+
 
 void GameWindow::copyArray(Cell *oldCells, Cell *newCells)
 {
@@ -500,9 +515,10 @@ Object **ResultWindow::getAllObjects()
 
 Text **ResultWindow::getAllTexts()
 {
-    static Text *texts[2];
+    static Text *texts[3];
     texts[0] = &winnerText;
     texts[1] = &backMenuText;
+    texts[2] = &waitText;
     return texts;
 }
 
@@ -510,9 +526,18 @@ void ResultWindow::setBackMenuText(const char *string)
 {
     this->winnerText.setString(string);
     if (!strcmp("WINNER!", string))
-        this->winnerText.setPosition(15, 300);
+        this->winnerText.setPosition(120, 300);
     else
         this->winnerText.setPosition(150, 300);
+}
+
+void ResultWindow::setWaitText(const char *string) {
+    if (!strcmp("Opponent disconnected.", string)) {
+        this->waitText.setFillColor(Color::Red);
+    } else {
+        this->waitText.setFillColor(Color::Black);
+    }
+    this->waitText.setString(string);
 }
 
 Text &ResultWindow::getBackMenuText()
@@ -545,9 +570,15 @@ void ResultWindow::createAllElements()
 
     backMenuText.setString("MAIN MENU");
     backMenuText.setFont(font);
-    backMenuText.setCharacterSize(37);
+    backMenuText.setCharacterSize(40);
     backMenuText.setStyle(Text::Bold);
-    backMenuText.setPosition(130, 490);
+    backMenuText.setPosition(160, 490);
+
+    waitText.setString("0/2 players ready...");
+    waitText.setFont(font);
+    waitText.setCharacterSize(28);
+    waitText.setFillColor(Color::Black);
+    waitText.setPosition(170, 600);
 }
 
 void Player::setGameWindow(GameWindow *gameWindow)

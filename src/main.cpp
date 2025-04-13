@@ -62,8 +62,12 @@ int main(int argc, char *argv[])
 
                         startWindow.setActive(false);
                         gameWindow.setActive(true);
+                        gameWindow.clearCells();
                         gameWindow.setPlayerFigure(player.getFigure());
                         gameWindow.setWaitMode(true);
+                        gameWindow.changeStepString(Move::Waiting);
+
+                        sleep(1);
 
                         break;
                     }
@@ -98,7 +102,7 @@ int main(int argc, char *argv[])
                 uint8_t move;
                 int bytesRead = recv(manager.getSocket(), &move, 1, MSG_DONTWAIT); // не блокирует цикл
 
-                if (bytesRead == 1)
+                if (bytesRead == 1 && move < 9)
                 {
                     if (gameWindow.getCells()[move].figure == Figure::Empty)
                     {
@@ -120,19 +124,29 @@ int main(int argc, char *argv[])
             }
             else if (Mouse::isButtonPressed(Mouse::Left) && resultWindow.isActive())
             {
-                resultWindow.setActive(false);
                 if (resultWindow.getAllObjects()[0]->sprite.getGlobalBounds().contains(mousePos.x, mousePos.y))
                 {
+                    manager.disconnect();
+                    resultWindow.setActive(false);
                     startWindow.setActive(true);
-                    // отключить все соединения
+                }
+                else if (manager.getSocket() == -1) 
+                {
+                    manager.initialize();
+                    resultWindow.setActive(false);
+                    gameWindow.setActive(true);
+                    gameWindow.clearCells();
+                    gameWindow.setWaitMode(true);
+                    gameWindow.changeStepString(Move::Waiting);
+                    manager.setReadyToContinue(false);
+                    manager.setEnemyReady(false);
                 }
                 else
                 {
-                    gameWindow.setActive(true);
-                    gameWindow.setWaitMode(true);
-                    // проверить, что подключения у обоих есть
+                    manager.setReadyToContinue(true);
+                    uint8_t msg = 100; // Условный код "готов к новой игре"
+                    send(manager.getSocket(), &msg, 1, 0);
                 }
-                gameWindow.clearCells();
             }
         }
 
@@ -186,9 +200,17 @@ int main(int argc, char *argv[])
                 figureButtons[0]->sprite.setPosition(50 + 300 * figure, 180);
                 resultWindow.setBackMenuText("DRAW!");
             }
+            
+            if (manager.getReadyToContinue() || manager.getEnemyReady()) {
+                resultWindow.setWaitText("1/2 players ready...");
+            } else if (manager.getSocket() == -1) {
+                resultWindow.setWaitText("Opponent disconnected.");
+            }
+
             window.draw(resultWindow.getAllObjects()[0]->sprite);
-            for (int i = 0; i < 2; i++)
+            for (int i = 0; i < 3; i++)
                 window.draw(*resultWindow.getAllTexts()[i]);
+            
             window.setMouseCursor(resultWindow.getCursor());
         }
 
@@ -197,7 +219,6 @@ int main(int argc, char *argv[])
         if (gameWindow.getWaitMode() == true) {
             while (true) {
                 if (!manager.isReady()) {
-                    gameWindow.changeStepString(Move::Waiting);
                     continue; // пока ждём подключения
                 } else {
                     enemy.setFigure(manager.getOpponentFigure());
@@ -206,11 +227,12 @@ int main(int argc, char *argv[])
                     if (enemy.getFigure() == Figure::Cross)
                     {
                         currentMove = Move::Enemy;
-                        gameWindow.changeStepString(Move::Bot);
+                        gameWindow.changeStepString(currentMove);
                     }
                     else
                     {
-                        gameWindow.changeStepString(Move::Player);
+                        currentMove = Move::Player;
+                        gameWindow.changeStepString(currentMove);
                     }
                     break;
                 }
@@ -221,6 +243,31 @@ int main(int argc, char *argv[])
         {
             sleep(1);
             gameWindow.setActive(false);
+        }
+
+        if (resultWindow.isActive() && manager.getSocket() != -1)
+        {
+            uint8_t buffer;
+            int bytesRead = recv(manager.getSocket(), &buffer, 1, MSG_DONTWAIT);
+
+            if (bytesRead == 1 && buffer == 100) {
+                manager.setEnemyReady(true);
+            }
+
+            if (bytesRead == 0) { // Если противник отключился
+                manager.disconnect();
+            }
+
+            if (manager.getReadyToContinue() && manager.getEnemyReady()) {
+                currentMove = (player.getFigure() == Figure::Cross) ? Move::Player : Move::Enemy;
+                gameWindow.clearCells();
+                gameWindow.changeStepString(currentMove);
+                gameWindow.setActive(true);
+                resultWindow.setActive(false);
+                manager.setReadyToContinue(false);
+                manager.setEnemyReady(false);
+                sleep(1);
+            }
         }
     }
 

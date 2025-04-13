@@ -35,6 +35,22 @@ public:
         this->port = port;
     }
 
+    bool getReadyToContinue() {
+        return this->readyToContinue;
+    }
+
+    void setReadyToContinue(bool readyToContinue) {
+        this->readyToContinue = readyToContinue;
+    }
+
+    bool getEnemyReady() {
+        return this->enemyReady;
+    }
+
+    void setEnemyReady(bool enemyReady) {
+        this->enemyReady = enemyReady;
+    }
+
     void initialize() {
         for (const auto& ip : ipList) {
             if (tryConnect(ip.c_str(), port, sockfd, myFigure, opponentFigure)) {
@@ -48,12 +64,28 @@ public:
         // Стали сервером
         isServer = true;
         serverThread = std::thread([this]() {
-            sockfd = waitForClient(port, myFigure);
+            while (sockfd == -1) {
+                sockfd = waitForClient(port, myFigure);
+                if (sockfd == -1) {
+                    std::cout << "⏳ Повтор попытки ожидания клиента...\n";
+                    sleep(1);
+                }
+            }
             opponentFigure = myFigure == Figure::Cross ? Figure::Zero : Figure::Cross;
             ready = true;
             std::cout << "🟢 Клиент подключился, начинаем игру.\n";
         });
         serverThread.detach();
+    }
+
+    void disconnect() {
+        if (sockfd != -1) {
+            shutdown(sockfd, SHUT_RDWR);
+            close(sockfd);
+            sockfd = -1;
+            ready = false;
+            enemyReady = false;
+        }
     }
 
 private:
@@ -68,6 +100,9 @@ private:
     std::atomic<bool> ready = false;
     std::thread serverThread;
 
+    bool readyToContinue = false;
+    bool enemyReady;
+
     bool tryConnect(const char* ip, int port, int& outSock, Figure myFigure, Figure& serverFigure) {
         int s = socket(AF_INET, SOCK_STREAM, 0);
         if (s < 0) return false;
@@ -78,6 +113,7 @@ private:
         inet_pton(AF_INET, ip, &addr.sin_addr);
 
         if (connect(s, (sockaddr*)&addr, sizeof(addr)) < 0) {
+            std::cout << "🟡 Не удалось подключиться к серверу." << std::endl;
             close(s);
             return false;
         }
@@ -90,6 +126,7 @@ private:
         uint8_t response;
         if (recv(s, &response, sizeof(response), 0) <= 0 || response == 0xFF) {
             close(s);
+            std::cout << "⚠️ Фигуры совпали, такой сервер не подходит" << std::endl;
             return false;
         }
 
@@ -104,29 +141,38 @@ private:
         addr.sin_family = AF_INET;
         addr.sin_port = htons(port);
         addr.sin_addr.s_addr = INADDR_ANY;
-
+    
+        int opt = 1;
+        setsockopt(listener, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt));
         bind(listener, (sockaddr*)&addr, sizeof(addr));
-        listen(listener, 1);
-
+        listen(listener, SOMAXCONN);
+    
+        std::cout << "🟡 Ожидание подключения клиента...\n";
         int clientSock = accept(listener, nullptr, nullptr);
-        close(listener); // Принимаем только одного
+        if (clientSock < 0) {
+            close(listener);
+            return -1;
+        }
 
-        // Получаем желаемую фигуру от клиента
         uint8_t desired;
         if (recv(clientSock, &desired, sizeof(desired), 0) <= 0) {
             close(clientSock);
+            close(listener);
             return -1;
         }
 
         if (desired == static_cast<uint8_t>(serverFigure)) {
             uint8_t reject = 0xFF;
+            std::cout << "⚠️ Фигуры совпадают, отклоняем.\n";
             send(clientSock, &reject, sizeof(reject), 0);
             close(clientSock);
+            close(listener);
             return -1;
         }
 
         uint8_t response = static_cast<uint8_t>(serverFigure);
         send(clientSock, &response, sizeof(response), 0);
+        close(listener); // Закрываем после успешного подключения
         return clientSock;
-    }
+    }    
 };
