@@ -102,6 +102,14 @@ int main(int argc, char *argv[])
                 uint8_t move;
                 int bytesRead = recv(manager.getSocket(), &move, 1, MSG_DONTWAIT); // не блокирует цикл
 
+                if (bytesRead == 0) { // Если противник отключился
+                    manager.disconnect();
+                    gameWindow.clearCells();
+                    gameWindow.setActive(false);
+                    startWindow.setActive(true);
+                    break;
+                }
+
                 if (bytesRead == 1 && move < 9)
                 {
                     if (gameWindow.getCells()[move].figure == Figure::Empty)
@@ -124,6 +132,9 @@ int main(int argc, char *argv[])
             }
             else if (Mouse::isButtonPressed(Mouse::Left) && resultWindow.isActive())
             {
+                if (mousePos.y < 30) {
+                    break;
+                }
                 if (resultWindow.getAllObjects()[0]->sprite.getGlobalBounds().contains(mousePos.x, mousePos.y))
                 {
                     manager.disconnect();
@@ -269,6 +280,7 @@ int main(int argc, char *argv[])
                 sleep(1);
             }
         }
+        usleep(5000);
     }
 
     return 0;
