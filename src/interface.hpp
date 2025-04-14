@@ -10,18 +10,16 @@ typedef struct
     int pos;
 } Step;
 
-enum class Type
-{
+enum class Type {
     Horizontal,
     Vertical,
     Diagonal,
 };
 
-enum class Winner
-{
+enum class Winner {
     Player = -1,
     Draw,
-    Bot,
+    Enemy,
     Unknown,
 };
 
@@ -38,17 +36,14 @@ typedef struct
     Sprite sprite;
 } Object;
 
-enum class Figure : uint8_t
-{
+enum class Figure : uint8_t {
     Empty = 0,
     Cross = 1,
     Zero = 2
 };
 
-enum class Move
-{
+enum class Move {
     Player,
-    Bot,
     Enemy,
     Waiting,
     EndGame,
@@ -61,9 +56,8 @@ typedef struct
     Sprite sprite;
 } Cell;
 
-class Interface
-{
-public:
+class Interface {
+   public:
     virtual void hover(Object *button, Text &text, Vector2i mousePos);
     virtual Object **getAllObjects();
     virtual Text **getAllTexts();
@@ -72,7 +66,7 @@ public:
     void setActive(bool active);
     bool isActive();
 
-protected:
+   protected:
     virtual void createAllElements();
     Font font;
     Cursor cursor;
@@ -80,9 +74,8 @@ protected:
     bool active;
 };
 
-class StartWindow : public Interface
-{
-public:
+class StartWindow : public Interface {
+   public:
     void hover(Object *button, Text &text, Vector2i mousePos) override;
     Object **getAllObjects() override;
     Text **getAllTexts() override;
@@ -90,16 +83,15 @@ public:
 
     StartWindow();
 
-protected:
+   protected:
     void createAllElements() override;
     Object buttons[3];
     Text headerText;
     Text startText;
 };
 
-class GameWindow : public Interface
-{
-public:
+class GameWindow : public Interface {
+   public:
     Object **getAllObjects() override;
     Text **getAllTexts() override;
     void changeStepString(Move move);
@@ -118,19 +110,12 @@ public:
     Result checkCells(Cell *gameField);
     Result checkResult(GameWindow &gameWindow, Cell *gameField);
     void clearCells();
-    void copyArray(Cell *oldCells, Cell *newCells);
-
-    bool getWaitMode() {
-        return this->waitMode;
-    }
-
-    void setWaitMode(bool waitMode) {
-        this->waitMode = waitMode;
-    }
+    bool getWaitMode();
+    void setWaitMode(bool waitMode);
 
     GameWindow();
 
-protected:
+   protected:
     void createAllElements() override;
     Object background;
     Object line;
@@ -143,9 +128,8 @@ protected:
     bool waitMode;
 };
 
-class ResultWindow : public Interface
-{
-public:
+class ResultWindow : public Interface {
+   public:
     void hover(Object *button, Text &text, Vector2i mousePos) override;
     Object **getAllObjects() override;
     Text **getAllTexts() override;
@@ -155,7 +139,7 @@ public:
 
     ResultWindow();
 
-protected:
+   protected:
     void createAllElements() override;
     Object backMenuButton;
     Text winnerText;
@@ -163,15 +147,13 @@ protected:
     Text waitText;
 };
 
-class Player
-{
-public:
+class Player {
+   public:
     void setGameWindow(GameWindow *gameWindow);
     void setFigure(Figure figure);
     Figure getFigure();
-    Step findOptimalMove(Cell *gameField, bool isBotMove);
 
-protected:
+   protected:
     GameWindow *gameWindow;
     Figure figure;
 };

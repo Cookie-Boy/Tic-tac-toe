@@ -1,287 +1,370 @@
-#include <SFML/Graphics.hpp>
 #include <locale.h>
 #include <time.h>
 #include <unistd.h>
 
+#include <SFML/Graphics.hpp>
 #include <interface.hpp>
+#include <memory>
 #include <network.hpp>
 
-std::vector<std::string> ipList = {
-    "127.0.0.1",
-    // "192.168.1.101", // другие IP в сети, если есть
-};
+class GameController {
+   public:
+    GameController() {
+        srand(time(NULL));
 
-int main(int argc, char *argv[])
-{
-    setlocale(LC_ALL, "Rus");
+        window_ = std::make_unique<sf::RenderWindow>(
+            sf::VideoMode(600, 640),
+            "Tic-tac-toe");
 
-    RenderWindow window(VideoMode(600, 640), "Tic-tac-toe");
-    StartWindow startWindow;
-    GameWindow gameWindow;
-    ResultWindow resultWindow;
-
-    bool isBotStep = false;
-    Move currentMove;
-    Result result;
-
-    Player player, enemy;
-    enemy.setGameWindow(&gameWindow);
-
-    MultiplayerManager manager;
-
-    while (window.isOpen())
-    {
-        Event event;
-        Vector2i mousePos = Mouse::getPosition(window);
-        while (window.pollEvent(event))
-        {
-            if (event.type == Event::Closed)
-                window.close();
-
-            else if (Mouse::isButtonPressed(Mouse::Left) && startWindow.isActive())
-            {
-                for (int i = 0; i < 3; i++)
-                {
-                    // socket initialization
-                    if (startWindow.getAllObjects()[i]->sprite.getGlobalBounds().contains(mousePos.x, mousePos.y))
-                    {
-                        if (i == 2)
-                        {
-                            srand(time(NULL));
-                            player.setFigure((Figure)(rand() % 2 + 1));
-                        }
-                        else
-                        {
-                            player.setFigure((Figure)(i + 1));
-                        }
-
-                        manager.setIpList(ipList);
-                        manager.setPort(8787);
-                        manager.setMyFigure(player.getFigure());
-                        manager.initialize();
-
-                        startWindow.setActive(false);
-                        gameWindow.setActive(true);
-                        gameWindow.clearCells();
-                        gameWindow.setPlayerFigure(player.getFigure());
-                        gameWindow.setWaitMode(true);
-                        gameWindow.changeStepString(Move::Waiting);
-
-                        sleep(1);
-
-                        break;
-                    }
-                }
-            }
-            else if (Mouse::isButtonPressed(Mouse::Left) && gameWindow.isActive() && currentMove == Move::Player)
-            {
-                for (int i = 0; i < 9; i++)
-                {
-                    if ((gameWindow.getCells()[i].sprite.getGlobalBounds().contains(mousePos.x, mousePos.y)) && (gameWindow.getCells()[i].figure == Figure::Empty))
-                    {
-                        gameWindow.setCell(i, player.getFigure());
-                        if ((result = gameWindow.checkResult(gameWindow, gameWindow.getCells())).winner != Winner::Unknown)
-                        {
-                            gameWindow.changeLinePosition(result);
-                            gameWindow.changeStepString(Move::EndGame);
-                            resultWindow.setActive(true);
-                        } else {
-                            gameWindow.changeStepString(Move::Enemy);
-                            currentMove = Move::Enemy;
-                        }
-
-                        // Отправка позиции по сокету
-                        uint8_t move = static_cast<uint8_t>(i);
-                        send(manager.getSocket(), &move, 1, 0);
-                        break;
-                    }
-                }
-            }
-            else if (gameWindow.isActive() && currentMove == Move::Enemy && !resultWindow.isActive())
-            {
-                uint8_t move;
-                int bytesRead = recv(manager.getSocket(), &move, 1, MSG_DONTWAIT); // не блокирует цикл
-
-                if (bytesRead == 0) { // Если противник отключился
-                    manager.disconnect();
-                    gameWindow.clearCells();
-                    gameWindow.setActive(false);
-                    startWindow.setActive(true);
-                    break;
-                }
-
-                if (bytesRead == 1 && move < 9)
-                {
-                    if (gameWindow.getCells()[move].figure == Figure::Empty)
-                    {
-                        gameWindow.setCell(move, enemy.getFigure());
-
-                        if ((result = gameWindow.checkResult(gameWindow, gameWindow.getCells())).winner != Winner::Unknown)
-                        {
-                            gameWindow.changeLinePosition(result);
-                            gameWindow.changeStepString(Move::EndGame);
-                            resultWindow.setActive(true);
-                        }
-                        else
-                        {
-                            gameWindow.changeStepString(Move::Player);
-                            currentMove = Move::Player;
-                        }
-                    }
-                }
-            }
-            else if (Mouse::isButtonPressed(Mouse::Left) && resultWindow.isActive())
-            {
-                if (mousePos.y < 30) {
-                    break;
-                }
-                if (resultWindow.getAllObjects()[0]->sprite.getGlobalBounds().contains(mousePos.x, mousePos.y))
-                {
-                    manager.disconnect();
-                    resultWindow.setActive(false);
-                    startWindow.setActive(true);
-                }
-                else if (manager.getSocket() == -1) 
-                {
-                    manager.initialize();
-                    resultWindow.setActive(false);
-                    gameWindow.setActive(true);
-                    gameWindow.clearCells();
-                    gameWindow.setWaitMode(true);
-                    gameWindow.changeStepString(Move::Waiting);
-                    manager.setReadyToContinue(false);
-                    manager.setEnemyReady(false);
-                }
-                else
-                {
-                    manager.setReadyToContinue(true);
-                    uint8_t msg = 100; // Условный код "готов к новой игре"
-                    send(manager.getSocket(), &msg, 1, 0);
-                }
-            }
-        }
-
-        gameWindow.updateCells();
-        window.clear(Color(20, 189, 172, 255));
-
-        if (startWindow.isActive())
-        {
-            startWindow.hover(startWindow.getAllObjects()[2], startWindow.getStartText(), mousePos);
-
-            for (int i = 0; i < 3; i++)
-                window.draw(startWindow.getAllObjects()[i]->sprite);
-            for (int i = 0; i < 2; i++)
-                window.draw(*startWindow.getAllTexts()[i]);
-            window.setMouseCursor(startWindow.getCursor());
-        }
-        else if (gameWindow.isActive())
-        {
-            for (int i = 0; i < 9; i++)
-                if (gameWindow.getCells()[i].figure != Figure::Empty)
-                    window.draw(gameWindow.getCells()[i].sprite);
-
-            for (int i = 0; i < 1; i++)
-                window.draw(gameWindow.getAllObjects()[i]->sprite);
-            window.draw(*gameWindow.getAllTexts()[0]);
-            if (resultWindow.isActive() && result.winner != Winner::Draw)
-            {
-                window.draw(gameWindow.getLineSprite());
-            }
-            window.setMouseCursor(gameWindow.getCursor());
-        }
-        else if (resultWindow.isActive())
-        {
-            int figure = 0;
-            resultWindow.hover(resultWindow.getAllObjects()[0], resultWindow.getBackMenuText(), mousePos);
-            Object **figureButtons = startWindow.getAllObjects();
-            if (result.winner != Winner::Draw)
-            {
-                (result.winner == Winner::Player) ? figure = ((int)player.getFigure()) - 1 : figure = ((int)enemy.getFigure()) - 1;
-                figureButtons[figure]->sprite.setPosition(200, 100);
-                figureButtons[figure]->sprite.setTextureRect(IntRect(200 * figure, 0, 200, 200));
-                window.draw(figureButtons[figure]->sprite);
-                figureButtons[figure]->sprite.setPosition(50 + 300 * figure, 180);
-                resultWindow.setBackMenuText("WINNER!");
-            }
-            else
-            {
-                figureButtons[0]->sprite.setPosition(110, 100);
-                figureButtons[0]->sprite.setTextureRect(IntRect(0, 0, 400, 200));
-                window.draw(figureButtons[0]->sprite);
-                figureButtons[0]->sprite.setPosition(50 + 300 * figure, 180);
-                resultWindow.setBackMenuText("DRAW!");
-            }
-            
-            if (manager.getReadyToContinue() || manager.getEnemyReady()) {
-                resultWindow.setWaitText("1/2 players ready...");
-            } else if (manager.getSocket() == -1) {
-                resultWindow.setWaitText("Opponent disconnected.");
-            }
-
-            window.draw(resultWindow.getAllObjects()[0]->sprite);
-            for (int i = 0; i < 3; i++)
-                window.draw(*resultWindow.getAllTexts()[i]);
-            
-            window.setMouseCursor(resultWindow.getCursor());
-        }
-
-        window.display();
-
-        if (gameWindow.getWaitMode() == true) {
-            while (true) {
-                if (!manager.isReady()) {
-                    continue; // пока ждём подключения
-                } else {
-                    enemy.setFigure(manager.getOpponentFigure());
-                    gameWindow.setWaitMode(false);
-                    gameWindow.setEnemyFigure(enemy.getFigure());
-                    if (enemy.getFigure() == Figure::Cross)
-                    {
-                        currentMove = Move::Enemy;
-                        gameWindow.changeStepString(currentMove);
-                    }
-                    else
-                    {
-                        currentMove = Move::Player;
-                        gameWindow.changeStepString(currentMove);
-                    }
-                    break;
-                }
-            }
-        }
-
-        if (gameWindow.isActive() && resultWindow.isActive())
-        {
-            sleep(1);
-            gameWindow.setActive(false);
-        }
-
-        if (resultWindow.isActive() && manager.getSocket() != -1)
-        {
-            uint8_t buffer;
-            int bytesRead = recv(manager.getSocket(), &buffer, 1, MSG_DONTWAIT);
-
-            if (bytesRead == 1 && buffer == 100) {
-                manager.setEnemyReady(true);
-            }
-
-            if (bytesRead == 0) { // Если противник отключился
-                manager.disconnect();
-            }
-
-            if (manager.getReadyToContinue() && manager.getEnemyReady()) {
-                currentMove = (player.getFigure() == Figure::Cross) ? Move::Player : Move::Enemy;
-                gameWindow.clearCells();
-                gameWindow.changeStepString(currentMove);
-                gameWindow.setActive(true);
-                resultWindow.setActive(false);
-                manager.setReadyToContinue(false);
-                manager.setEnemyReady(false);
-                sleep(1);
-            }
-        }
-        usleep(5000);
+        ipList_ = {"127.0.0.1"};
     }
 
+    void run() {
+        while (window_->isOpen()) {
+            processEvents();
+            update();
+            render();
+            // usleep(5000);
+        }
+    }
+
+   private:
+    // Game state
+    std::unique_ptr<sf::RenderWindow> window_;
+    StartWindow startWindow_;
+    GameWindow gameWindow_;
+    ResultWindow resultWindow_;
+
+    Player player_;
+    Player enemy_;
+    NetworkManager networkManager_;
+
+    Move currentMove_ = Move::Waiting;
+    Result gameResult_;
+    std::vector<std::string> ipList_;
+
+    // Event processing
+    void processEvents() {
+        sf::Event event;
+        sf::Vector2i mousePos = sf::Mouse::getPosition(*window_);
+
+        while (window_->pollEvent(event)) {
+            if (event.type == sf::Event::Closed) {
+                window_->close();
+                return;
+            }
+
+            handleMouseEvents(event, mousePos);
+        }
+    }
+
+    void handleMouseEvents(const sf::Event& event, const sf::Vector2i& mousePos) {
+        if (event.type == sf::Event::MouseButtonPressed &&
+            event.mouseButton.button == sf::Mouse::Left) {
+            if (startWindow_.isActive()) {
+                handleStartWindowClick(mousePos);
+            } else if (gameWindow_.isActive() && currentMove_ == Move::Player) {
+                handleGameWindowClick(mousePos);
+            } else if (resultWindow_.isActive()) {
+                handleResultWindowClick(mousePos);
+            }
+        }
+    }
+
+    // Window-specific handlers
+    void handleStartWindowClick(const sf::Vector2i& mousePos) {
+        for (int i = 0; i < 3; i++) {
+            if (startWindow_.getAllObjects()[i]->sprite.getGlobalBounds().contains(mousePos.x, mousePos.y)) {
+                setupPlayerFigure(i);
+                initializeNetwork();
+                switchToGameWindow();
+                break;
+            }
+        }
+    }
+
+    void setupPlayerFigure(int choice) {
+        if (choice == 2) {
+            player_.setFigure(static_cast<Figure>(rand() % 2 + 1));
+        } else {
+            player_.setFigure(static_cast<Figure>(choice + 1));
+        }
+    }
+
+    void initializeNetwork() {
+        networkManager_.setIpList(ipList_);
+        networkManager_.setPort(PORT);
+        networkManager_.setMyFigure(player_.getFigure());
+        networkManager_.initialize();
+    }
+
+    void switchToGameWindow() {
+        startWindow_.setActive(false);
+        gameWindow_.setActive(true);
+        gameWindow_.clearCells();
+        gameWindow_.setPlayerFigure(player_.getFigure());
+        gameWindow_.setWaitMode(true);
+        gameWindow_.changeStepString(Move::Waiting);
+    }
+
+    void handleGameWindowClick(const sf::Vector2i& mousePos) {
+        for (int i = 0; i < 9; i++) {
+            auto& cell = gameWindow_.getCells()[i];
+            if (cell.sprite.getGlobalBounds().contains(mousePos.x, mousePos.y) &&
+                cell.figure == Figure::Empty) {
+                makePlayerMove(i);
+                break;
+            }
+        }
+    }
+
+    void makePlayerMove(int cellIndex) {
+        gameWindow_.setCell(cellIndex, player_.getFigure());
+
+        gameResult_ = gameWindow_.checkResult(gameWindow_, gameWindow_.getCells());
+        if (gameResult_.winner != Winner::Unknown) {
+            endGame();
+        } else {
+            currentMove_ = Move::Enemy;
+            gameWindow_.changeStepString(currentMove_);
+        }
+
+        sendMove(cellIndex);
+    }
+
+    void sendMove(int cellIndex) {
+        uint8_t move = static_cast<uint8_t>(cellIndex);
+        send(networkManager_.getSocket(), &move, 1, 0);
+    }
+
+    void endGame() {
+        gameWindow_.changeLinePosition(gameResult_);
+        gameWindow_.changeStepString(Move::EndGame);
+        resultWindow_.setActive(true);
+    }
+
+    void handleResultWindowClick(const sf::Vector2i& mousePos) {
+        if (mousePos.y < 30) return;
+
+        auto* clickedObject = resultWindow_.getAllObjects()[0];
+        if (clickedObject->sprite.getGlobalBounds().contains(mousePos.x, mousePos.y)) {
+            returnToMainMenu();
+        } else if (networkManager_.getSocket() == -1) {
+            attemptReconnect();
+        } else {
+            sendReadySignal();
+        }
+    }
+
+    void returnToMainMenu() {
+        networkManager_.disconnect();
+        resultWindow_.setActive(false);
+        startWindow_.setActive(true);
+    }
+
+    void attemptReconnect() {
+        networkManager_.initialize();
+        resultWindow_.setActive(false);
+        gameWindow_.setActive(true);
+        gameWindow_.clearCells();
+        gameWindow_.setWaitMode(true);
+        gameWindow_.changeStepString(Move::Waiting);
+        networkManager_.setReadyToContinue(false);
+        networkManager_.setEnemyReady(false);
+    }
+
+    void sendReadySignal() {
+        networkManager_.setReadyToContinue(true);
+        uint8_t msg = 100;  // Ready signal
+        send(networkManager_.getSocket(), &msg, 1, 0);
+    }
+
+    // Game state updates
+    void update() {
+        if (gameWindow_.getWaitMode()) {
+            updateWaitingState();
+        }
+
+        if (gameWindow_.isActive() && currentMove_ == Move::Enemy && !resultWindow_.isActive()) {
+            processEnemyMove();
+        }
+
+        if (resultWindow_.isActive() && networkManager_.getSocket() != -1) {
+            checkReadyStatus();
+        }
+    }
+
+    void updateWaitingState() {
+        if (networkManager_.isReady()) {
+            enemy_.setFigure(networkManager_.getOpponentFigure());
+            gameWindow_.setWaitMode(false);
+            gameWindow_.setEnemyFigure(enemy_.getFigure());
+
+            currentMove_ = (enemy_.getFigure() == Figure::Cross) ? Move::Enemy : Move::Player;
+            gameWindow_.changeStepString(currentMove_);
+        }
+    }
+
+    void processEnemyMove() {
+        uint8_t move;
+        int bytesRead = recv(networkManager_.getSocket(), &move, 1, MSG_DONTWAIT);
+
+        if (bytesRead == 0) {
+            handleDisconnection();
+            return;
+        }
+
+        if (bytesRead == 1 && move < 9 && gameWindow_.getCells()[move].figure == Figure::Empty) {
+            executeEnemyMove(move);
+        }
+    }
+
+    void executeEnemyMove(uint8_t move) {
+        gameWindow_.setCell(move, enemy_.getFigure());
+
+        gameResult_ = gameWindow_.checkResult(gameWindow_, gameWindow_.getCells());
+        if (gameResult_.winner != Winner::Unknown) {
+            endGame();
+        } else {
+            currentMove_ = Move::Player;
+            gameWindow_.changeStepString(currentMove_);
+        }
+    }
+
+    void handleDisconnection() {
+        networkManager_.disconnect();
+        gameWindow_.clearCells();
+        gameWindow_.setActive(false);
+        startWindow_.setActive(true);
+    }
+
+    void checkReadyStatus() {
+        uint8_t buffer;
+        int bytesRead = recv(networkManager_.getSocket(), &buffer, 1, MSG_DONTWAIT);
+
+        if (bytesRead == 1 && buffer == 100) {
+            networkManager_.setEnemyReady(true);
+        }
+
+        if (bytesRead == 0) {
+            networkManager_.disconnect();
+        }
+
+        if (networkManager_.getReadyToContinue() && networkManager_.getEnemyReady()) {
+            startNewGame();
+        }
+    }
+
+    void startNewGame() {
+        currentMove_ = (player_.getFigure() == Figure::Cross) ? Move::Player : Move::Enemy;
+        gameWindow_.clearCells();
+        gameWindow_.changeStepString(currentMove_);
+        gameWindow_.setActive(true);
+        resultWindow_.setActive(false);
+        networkManager_.setReadyToContinue(false);
+        networkManager_.setEnemyReady(false);
+    }
+
+    // Rendering
+    void render() {
+        window_->clear(sf::Color(20, 189, 172, 255));
+
+        if (startWindow_.isActive()) {
+            renderStartWindow();
+        } else if (gameWindow_.isActive()) {
+            renderGameWindow();
+        } else if (resultWindow_.isActive()) {
+            renderResultWindow();
+        }
+
+        window_->display();
+
+        if (gameWindow_.isActive() && resultWindow_.isActive()) {
+            sleep(1);
+            gameWindow_.setActive(false);
+        }
+    }
+
+    void renderStartWindow() {
+        sf::Vector2i mousePos = sf::Mouse::getPosition(*window_);
+        startWindow_.hover(startWindow_.getAllObjects()[2], startWindow_.getStartText(), mousePos);
+
+        for (int i = 0; i < 3; i++) {
+            window_->draw(startWindow_.getAllObjects()[i]->sprite);
+        }
+
+        for (int i = 0; i < 2; i++) {
+            window_->draw(*startWindow_.getAllTexts()[i]);
+        }
+
+        window_->setMouseCursor(startWindow_.getCursor());
+    }
+
+    void renderGameWindow() {
+        gameWindow_.updateCells();
+
+        for (int i = 0; i < 9; i++) {
+            if (gameWindow_.getCells()[i].figure != Figure::Empty) {
+                window_->draw(gameWindow_.getCells()[i].sprite);
+            }
+        }
+
+        window_->draw(gameWindow_.getAllObjects()[0]->sprite);
+        window_->draw(*gameWindow_.getAllTexts()[0]);
+
+        if (resultWindow_.isActive() && gameResult_.winner != Winner::Draw) {
+            window_->draw(gameWindow_.getLineSprite());
+        }
+
+        window_->setMouseCursor(gameWindow_.getCursor());
+    }
+
+    void renderResultWindow() {
+        sf::Vector2i mousePos = sf::Mouse::getPosition(*window_);
+        resultWindow_.hover(resultWindow_.getAllObjects()[0], resultWindow_.getBackMenuText(), mousePos);
+
+        renderWinnerDisplay();
+        updateReadyStatusText();
+
+        window_->draw(resultWindow_.getAllObjects()[0]->sprite);
+        for (int i = 0; i < 3; i++) {
+            window_->draw(*resultWindow_.getAllTexts()[i]);
+        }
+
+        window_->setMouseCursor(resultWindow_.getCursor());
+    }
+
+    void renderWinnerDisplay() {
+        Object** figureButtons = startWindow_.getAllObjects();
+
+        if (gameResult_.winner != Winner::Draw) {
+            int figure = (gameResult_.winner == Winner::Player) ? (static_cast<int>(player_.getFigure()) - 1) : (static_cast<int>(enemy_.getFigure()) - 1);
+
+            figureButtons[figure]->sprite.setPosition(200, 100);
+            figureButtons[figure]->sprite.setTextureRect(sf::IntRect(200 * figure, 0, 200, 200));
+            window_->draw(figureButtons[figure]->sprite);
+            figureButtons[figure]->sprite.setPosition(50 + 300 * figure, 180);
+            resultWindow_.setBackMenuText("WINNER!");
+        } else {
+            figureButtons[0]->sprite.setPosition(110, 100);
+            figureButtons[0]->sprite.setTextureRect(sf::IntRect(0, 0, 400, 200));
+            window_->draw(figureButtons[0]->sprite);
+            figureButtons[0]->sprite.setPosition(50, 180);
+            resultWindow_.setBackMenuText("DRAW!");
+        }
+    }
+
+    void updateReadyStatusText() {
+        if (networkManager_.getReadyToContinue() || networkManager_.getEnemyReady()) {
+            resultWindow_.setWaitText("1/2 players ready...");
+        } else if (networkManager_.getSocket() == -1) {
+            resultWindow_.setWaitText("Opponent disconnected.");
+        }
+    }
+};
+
+int main() {
+    GameController game;
+    game.run();
     return 0;
 }

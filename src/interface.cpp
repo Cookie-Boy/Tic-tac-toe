@@ -1,131 +1,81 @@
 #include <SFML/Graphics.hpp>
 #include <cstring>
-
 #include <interface.hpp>
 
 // Interface
+void Interface::hover(Object* button, Text& text, Vector2i mousePos) {}
 
-void Interface::hover(Object *button, Text &text, Vector2i mousePos)
-{
-}
+Object** Interface::getAllObjects() { return nullptr; }
 
-Object **Interface::getAllObjects()
-{
-}
+Text** Interface::getAllTexts() { return nullptr; }
 
-Text **Interface::getAllTexts()
-{
-}
-
-void Interface::setCursor(Cursor::Type cursorType)
-{
-    if (cursorType != this->cursorType)
-    {
+void Interface::setCursor(Cursor::Type cursorType) {
+    if (cursorType != this->cursorType) {
         this->cursor.loadFromSystem(cursorType);
         this->cursorType = cursorType;
     }
 }
 
-Cursor &Interface::getCursor()
-{
-    return this->cursor;
-}
+Cursor& Interface::getCursor() { return this->cursor; }
 
-void Interface::setActive(bool active)
-{
-    this->active = active;
-}
+void Interface::setActive(bool active) { this->active = active; }
 
-bool Interface::isActive()
-{
-    return this->active;
-}
+bool Interface::isActive() { return this->active; }
 
-void Interface::createAllElements()
-{
-}
+void Interface::createAllElements() {}
 
 // StartWindow
 
-void StartWindow::hover(Object *button, Text &text, Vector2i mousePos)
-{
-    for (int i = 0; i < 2; i++)
-    {
-        if (buttons[i].sprite.getGlobalBounds().contains(mousePos.x, mousePos.y))
-        {
+void StartWindow::hover(Object* button, Text& text, Vector2i mousePos) {
+    for (int i = 0; i < 2; i++) {
+        if (buttons[i].sprite.getGlobalBounds().contains(mousePos.x, mousePos.y)) {
             buttons[i].sprite.setTextureRect(IntRect(200 * i, 200, 200, 200));
             setCursor(Cursor::Hand);
             return;
-        }
-        else
-        {
+        } else {
             buttons[i].sprite.setTextureRect(IntRect(200 * i, 0, 200, 200));
         }
     }
 
-    if (button->sprite.getGlobalBounds().contains(mousePos.x, mousePos.y))
-    {
+    if (button->sprite.getGlobalBounds().contains(mousePos.x, mousePos.y)) {
         button->sprite.setTextureRect(IntRect(0, 80, 350, 80));
         text.setFillColor(Color(84, 84, 84, 255));
         setCursor(Cursor::Hand);
-        return;
-    }
-    else
-    {
+    } else {
         button->sprite.setTextureRect(IntRect(0, 0, 350, 80));
         text.setFillColor(Color(245, 236, 211, 255));
+        setCursor(Cursor::Arrow);
     }
-
-    setCursor(Cursor::Arrow);
 }
 
-Object **StartWindow::getAllObjects()
-{
-    static Object *objects[3];
-    for (int i = 0; i < 3; i++)
-        objects[i] = &buttons[i];
+Object** StartWindow::getAllObjects() {
+    static Object* objects[3];
+    for (int i = 0; i < 3; i++) objects[i] = &buttons[i];
     return objects;
 }
 
-Text **StartWindow::getAllTexts()
-{
-    static Text *texts[2];
+Text** StartWindow::getAllTexts() {
+    static Text* texts[2];
     texts[0] = &headerText;
     texts[1] = &startText;
     return texts;
 }
 
-Text &StartWindow::getStartText()
-{
-    return this->startText;
-}
+Text& StartWindow::getStartText() { return this->startText; }
 
 // Constructor for StartWindow
-
-StartWindow::StartWindow()
-{
+StartWindow::StartWindow() {
     createAllElements();
     this->cursorType = Cursor::Arrow;
     this->cursor.loadFromSystem(cursorType);
     this->active = true;
 }
 
-void StartWindow::createAllElements()
-{
-    for (int i = 0; i < 3; i++)
-    {
-        if (i == 2)
-        {
-            buttons[i].texture.loadFromFile("img/button.png");
-            buttons[i].sprite.setTexture(buttons[i].texture);
-            buttons[i].sprite.setPosition(125, 475);
-        }
-        else
-        {
-            buttons[i].texture.loadFromFile("img/figures.png");
-            buttons[i].sprite.setTexture(buttons[i].texture);
-            buttons[i].sprite.setPosition(50 + 300 * i, 180);
-        }
+void StartWindow::createAllElements() {
+    for (int i = 0; i < 3; i++) {
+        buttons[i].texture.loadFromFile(i == 2 ? "img/button.png" : "img/figures.png");
+        buttons[i].sprite.setTexture(buttons[i].texture);
+        buttons[i].sprite.setPosition(i == 2 ? 125 : 50 + 300 * i, i == 2 ? 475 : 180);
     }
 
     font.loadFromFile("utils/RobotoSerif.ttf");
@@ -146,58 +96,51 @@ void StartWindow::createAllElements()
 
 // GameWindow
 
-Object **GameWindow::getAllObjects()
-{
-    static Object *objects[1];
+Object** GameWindow::getAllObjects() {
+    static Object* objects[1];
     objects[0] = &background;
     return objects;
 }
 
-Text **GameWindow::getAllTexts()
-{
-    static Text *texts[1];
+Text** GameWindow::getAllTexts() {
+    static Text* texts[1];
     texts[0] = &stepText;
     return texts;
 }
 
-void GameWindow::changeStepString(Move move)
-{
-    if (move == Move::Player)
-    {
-        stepText.setFillColor(Color(84, 84, 84, 255));
-        stepText.setPosition(227, 598);
-        stepText.setString("Your step!");
+void GameWindow::changeStepString(Move move) {
+    Color color;
+    std::string message;
+    sf::Vector2f position(227, 598);
+
+    switch (move) {
+        case Move::Player:
+            color = Color(84, 84, 84, 255);
+            message = "Your step!";
+            break;
+        case Move::Enemy:
+            color = Color(236, 234, 210, 255);
+            message = "Player 2 step!";
+            break;
+        case Move::Waiting:
+            color = Color(236, 234, 210, 255);
+            position.x = 160;
+            message = "Waiting for player...";
+            break;
+        case Move::EndGame:
+            color = Color(84, 84, 84, 255);
+            position.x = 185;
+            message = "End game!";
+            break;
     }
-    else if (move == Move::Bot)
-    {
-        stepText.setFillColor(Color(236, 234, 210, 255));
-        stepText.setPosition(227, 598);
-        stepText.setString("Bot's step!");
-    }
-    else if (move == Move::Enemy)
-    {
-        stepText.setFillColor(Color(236, 234, 210, 255));
-        stepText.setPosition(227, 598);
-        stepText.setString("Player 2 step!");
-    }
-    else if (move == Move::Waiting)
-    {
-        stepText.setFillColor(Color(236, 234, 210, 255));
-        stepText.setPosition(227, 598);
-        stepText.setString("Waiting for player...");
-    }
-    else if (move == Move::EndGame)
-    {
-        stepText.setFillColor(Color(84, 84, 84, 255));
-        stepText.setPosition(185, 598);
-        stepText.setString("End game!");
-    }
+
+    stepText.setFillColor(color);
+    stepText.setPosition(position);
+    stepText.setString(message);
 }
 
-void GameWindow::updateCells()
-{
-    for (int i = 0; i < 9; i++)
-    {
+void GameWindow::updateCells() {
+    for (int i = 0; i < 9; i++) {
         if (cells[i].figure == Figure::Cross || cells[i].figure == Figure::Empty)
             cells[i].sprite.setTextureRect(IntRect(0, 0, 200, 200));
         else if (cells[i].figure == Figure::Zero)
@@ -205,191 +148,141 @@ void GameWindow::updateCells()
     }
 }
 
-void GameWindow::setCell(int index, Figure figure)
-{
-    cells[index].figure = figure;
-}
+void GameWindow::setCell(int index, Figure figure) { cells[index].figure = figure; }
 
-Cell *GameWindow::getCells()
-{
-    return this->cells;
-}
+Cell* GameWindow::getCells() { return this->cells; }
 
-void GameWindow::setPlayerFigure(Figure playerFigure)
-{
-    this->playerFigure = playerFigure;
-}
+void GameWindow::setPlayerFigure(Figure playerFigure) { this->playerFigure = playerFigure; }
 
-Figure GameWindow::getPlayerFigure()
-{
-    return this->playerFigure;
-}
+Figure GameWindow::getPlayerFigure() { return this->playerFigure; }
 
-void GameWindow::setEnemyFigure(Figure enemyFigure)
-{
-    this->enemyFigure = enemyFigure;
-}
+void GameWindow::setEnemyFigure(Figure enemyFigure) { this->enemyFigure = enemyFigure; }
 
-Figure GameWindow::getEnemyFigure()
-{
-    return this->enemyFigure;
-}
+Figure GameWindow::getEnemyFigure() { return this->enemyFigure; }
 
-void GameWindow::changeLinePosition(Result result)
-{
-    if (result.type == Type::Horizontal)
-    {
-        line.sprite.setTextureRect(IntRect(0, 0, 600, 10));
-        line.sprite.setRotation(0);
+void GameWindow::changeLinePosition(Result result) {
+    line.sprite.setTextureRect(IntRect(0, 0, 600, 10));
+    line.sprite.setRotation((result.type == Type::Vertical) ? 90 : 0);
+
+    if (result.type == Type::Horizontal) {
         int distance = ((result.pos / 3) * 200) + 100;
         line.sprite.setPosition(0, distance);
-    }
-    else if (result.type == Type::Vertical)
-    {
-        line.sprite.setTextureRect(IntRect(0, 0, 600, 10));
-        line.sprite.setRotation(90);
+    } else if (result.type == Type::Vertical) {
         int distance = (result.pos * 200) + 105;
         line.sprite.setPosition(distance, 0);
-    }
-    else if (result.type == Type::Diagonal)
-    {
+    } else if (result.type == Type::Diagonal) {
         if (result.pos == 1)
             line.sprite.setTextureRect(IntRect(0, 10, 600, 600));
         else if (result.pos == 2)
             line.sprite.setTextureRect(IntRect(600, 10, -600, 600));
-        line.sprite.setRotation(0);
         line.sprite.setPosition(0, 0);
     }
 }
 
-Sprite &GameWindow::getLineSprite()
-{
-    return this->line.sprite;
-}
+Sprite& GameWindow::getLineSprite() { return this->line.sprite; }
 
-Result GameWindow::checkHorizontal(Cell *gameField)
-{
+Result GameWindow::checkHorizontal(Cell* gameField) {
     Figure playerFigure = this->getPlayerFigure();
     Figure botFigure = this->getEnemyFigure();
     Result result;
     result.type = Type::Horizontal;
     result.winner = Winner::Unknown;
-    int playerCounter = 0, botCounter = 0;
+    int playerCounter = 0, enemyCounter = 0;
 
-    for (int i = 0; i < 7; i += 3)
-    {
-        for (int j = i; j < (i + 3); j++)
-        {
+    for (int i = 0; i < 7; i += 3) {
+        for (int j = i; j < (i + 3); j++) {
             if (gameField[j].figure == playerFigure)
                 playerCounter++;
             else if (gameField[j].figure == botFigure)
-                botCounter++;
+                enemyCounter++;
 
-            if (playerCounter == 3)
-            {
+            if (playerCounter == 3) {
                 result.winner = Winner::Player;
                 result.pos = i;
                 return result;
-            }
-            else if (botCounter == 3)
-            {
-                result.winner = Winner::Bot;
+            } else if (enemyCounter == 3) {
+                result.winner = Winner::Enemy;
                 result.pos = i;
                 return result;
             }
         }
         playerCounter = 0;
-        botCounter = 0;
+        enemyCounter = 0;
     }
     return result;
 }
 
-Result GameWindow::checkVertical(Cell *gameField)
-{
+Result GameWindow::checkVertical(Cell* gameField) {
     Figure playerFigure = this->getPlayerFigure();
     Figure botFigure = this->getEnemyFigure();
     Result result;
     result.type = Type::Vertical;
     result.winner = Winner::Unknown;
-    int playerCounter = 0, botCounter = 0;
+    int playerCounter = 0, enemyCounter = 0;
 
-    for (int i = 0; i < 3; i++)
-    {
-        for (int j = i; j < (i + 7); j += 3)
-        {
+    for (int i = 0; i < 3; i++) {
+        for (int j = i; j < (i + 7); j += 3) {
             if (gameField[j].figure == playerFigure)
                 playerCounter++;
             else if (gameField[j].figure == botFigure)
-                botCounter++;
+                enemyCounter++;
 
-            if (playerCounter == 3)
-            {
+            if (playerCounter == 3) {
                 result.winner = Winner::Player;
                 result.pos = i;
                 return result;
-            }
-            else if (botCounter == 3)
-            {
-                result.winner = Winner::Bot;
+            } else if (enemyCounter == 3) {
+                result.winner = Winner::Enemy;
                 result.pos = i;
                 return result;
             }
         }
         playerCounter = 0;
-        botCounter = 0;
+        enemyCounter = 0;
     }
     return result;
 }
 
-Result GameWindow::checkDiagonal(Cell *gameField)
-{
+Result GameWindow::checkDiagonal(Cell* gameField) {
     Figure playerFigure = this->getPlayerFigure();
     Figure botFigure = this->getEnemyFigure();
     Result result;
     result.type = Type::Diagonal;
     result.winner = Winner::Unknown;
-    int playerCounter = 0, botCounter = 0;
+    int playerCounter = 0, enemyCounter = 0;
 
-    for (int i = 0; i < 9; i += 4)
-    {
+    for (int i = 0; i < 9; i += 4) {
         if (gameField[i].figure == playerFigure)
             playerCounter++;
         else if (gameField[i].figure == botFigure)
-            botCounter++;
+            enemyCounter++;
 
-        if (playerCounter == 3)
-        {
+        if (playerCounter == 3) {
             result.winner = Winner::Player;
             result.pos = 1;
             return result;
-        }
-        else if (botCounter == 3)
-        {
-            result.winner = Winner::Bot;
+        } else if (enemyCounter == 3) {
+            result.winner = Winner::Enemy;
             result.pos = 1;
             return result;
         }
     }
 
     playerCounter = 0;
-    botCounter = 0;
+    enemyCounter = 0;
 
-    for (int i = 2; i < 7; i += 2)
-    {
+    for (int i = 2; i < 7; i += 2) {
         if (gameField[i].figure == playerFigure)
             playerCounter++;
         else if (gameField[i].figure == botFigure)
-            botCounter++;
+            enemyCounter++;
 
-        if (playerCounter == 3)
-        {
+        if (playerCounter == 3) {
             result.winner = Winner::Player;
             result.pos = 2;
             return result;
-        }
-        else if (botCounter == 3)
-        {
-            result.winner = Winner::Bot;
+        } else if (enemyCounter == 3) {
+            result.winner = Winner::Enemy;
             result.pos = 2;
             return result;
         }
@@ -397,17 +290,13 @@ Result GameWindow::checkDiagonal(Cell *gameField)
     return result;
 }
 
-Result GameWindow::checkCells(Cell *gameField)
-{
+Result GameWindow::checkCells(Cell* gameField) {
     Result result;
     int count = 0;
-    for (int i = 0; i < 9; i++)
-    {
-        if (gameField[i].figure == Figure::Empty)
-            count++;
+    for (int i = 0; i < 9; i++) {
+        if (gameField[i].figure == Figure::Empty) count++;
     }
-    if (count > 0)
-    {
+    if (count > 0) {
         result.winner = Winner::Unknown;
         return result;
     }
@@ -415,28 +304,22 @@ Result GameWindow::checkCells(Cell *gameField)
     return result;
 }
 
-Result GameWindow::checkResult(GameWindow &gameWindow, Cell *gameField)
-{
+Result GameWindow::checkResult(GameWindow& gameWindow, Cell* gameField) {
     Result result;
-    if ((result = gameWindow.checkHorizontal(gameField)).winner != Winner::Unknown)
+    if ((result = gameWindow.checkHorizontal(gameField)).winner !=
+        Winner::Unknown)
         return result;
-    if ((result = gameWindow.checkVertical(gameField)).winner != Winner::Unknown)
+    if ((result = gameWindow.checkVertical(gameField)).winner !=
+        Winner::Unknown)
         return result;
-    if ((result = gameWindow.checkDiagonal(gameField)).winner != Winner::Unknown)
+    if ((result = gameWindow.checkDiagonal(gameField)).winner !=
+        Winner::Unknown)
         return result;
     return checkCells(gameField);
 }
 
-// void GameWindow::clearCells()
-// {
-//     for (int i = 0; i < 9; i++)
-//         this->cells[i].figure = Figure::Empty;
-// }
-
-void GameWindow::clearCells()
-{
-    for (int i = 0; i < 9; i++)
-    {
+void GameWindow::clearCells() {
+    for (int i = 0; i < 9; i++) {
         cells[i].figure = Figure::Empty;
         cells[i].texture.loadFromFile("img/figures.png");
         cells[i].sprite.setTexture(cells[i].texture);
@@ -447,27 +330,20 @@ void GameWindow::clearCells()
     }
 }
 
+bool GameWindow::getWaitMode() { return this->waitMode; }
 
-void GameWindow::copyArray(Cell *oldCells, Cell *newCells)
-{
-    for (int i = 0; i < 9; i++)
-        newCells[i].figure = oldCells[i].figure;
-}
+void GameWindow::setWaitMode(bool waitMode) { this->waitMode = waitMode; }
 
 // Constructor for GameWindow
-
-GameWindow::GameWindow()
-{
+GameWindow::GameWindow() {
     createAllElements();
     this->cursorType = Cursor::Arrow;
     this->cursor.loadFromSystem(cursorType);
     this->active = false;
 }
 
-void GameWindow::createAllElements()
-{
-    for (int i = 0; i < 9; i++)
-    {
+void GameWindow::createAllElements() {
+    for (int i = 0; i < 9; i++) {
         cells[i].texture.loadFromFile("img/figures.png");
         cells[i].sprite.setTexture(cells[i].texture);
         cells[i].figure = Figure::Empty;
@@ -488,17 +364,13 @@ void GameWindow::createAllElements()
     line.sprite.setTexture(line.texture);
 }
 
-void ResultWindow::hover(Object *button, Text &text, Vector2i mousePos)
-{
-    if (button->sprite.getGlobalBounds().contains(mousePos.x, mousePos.y))
-    {
+void ResultWindow::hover(Object* button, Text& text, Vector2i mousePos) {
+    if (button->sprite.getGlobalBounds().contains(mousePos.x, mousePos.y)) {
         button->sprite.setTextureRect(IntRect(0, 80, 350, 80));
         text.setFillColor(Color(84, 84, 84, 255));
         setCursor(Cursor::Hand);
         return;
-    }
-    else
-    {
+    } else {
         button->sprite.setTextureRect(IntRect(0, 0, 350, 80));
         text.setFillColor(Color(245, 236, 211, 255));
     }
@@ -506,24 +378,21 @@ void ResultWindow::hover(Object *button, Text &text, Vector2i mousePos)
     setCursor(Cursor::Arrow);
 }
 
-Object **ResultWindow::getAllObjects()
-{
-    static Object *objects[1];
+Object** ResultWindow::getAllObjects() {
+    static Object* objects[1];
     objects[0] = &backMenuButton;
     return objects;
 }
 
-Text **ResultWindow::getAllTexts()
-{
-    static Text *texts[3];
+Text** ResultWindow::getAllTexts() {
+    static Text* texts[3];
     texts[0] = &winnerText;
     texts[1] = &backMenuText;
     texts[2] = &waitText;
     return texts;
 }
 
-void ResultWindow::setBackMenuText(const char *string)
-{
+void ResultWindow::setBackMenuText(const char* string) {
     this->winnerText.setString(string);
     if (!strcmp("WINNER!", string))
         this->winnerText.setPosition(120, 300);
@@ -531,7 +400,7 @@ void ResultWindow::setBackMenuText(const char *string)
         this->winnerText.setPosition(150, 300);
 }
 
-void ResultWindow::setWaitText(const char *string) {
+void ResultWindow::setWaitText(const char* string) {
     if (!strcmp("Opponent disconnected.", string)) {
         this->waitText.setFillColor(Color::Red);
     } else {
@@ -540,23 +409,17 @@ void ResultWindow::setWaitText(const char *string) {
     this->waitText.setString(string);
 }
 
-Text &ResultWindow::getBackMenuText()
-{
-    return this->backMenuText;
-}
+Text& ResultWindow::getBackMenuText() { return this->backMenuText; }
 
 // Constructor for ResultWindow
-
-ResultWindow::ResultWindow()
-{
+ResultWindow::ResultWindow() {
     createAllElements();
     this->cursorType = Cursor::Arrow;
     this->cursor.loadFromSystem(cursorType);
     this->active = false;
 }
 
-void ResultWindow::createAllElements()
-{
+void ResultWindow::createAllElements() {
     backMenuButton.texture.loadFromFile("img/button.png");
     backMenuButton.sprite.setTexture(backMenuButton.texture);
     backMenuButton.sprite.setPosition(125, 475);
@@ -581,60 +444,10 @@ void ResultWindow::createAllElements()
     waitText.setPosition(170, 600);
 }
 
-void Player::setGameWindow(GameWindow *gameWindow)
-{
+void Player::setGameWindow(GameWindow* gameWindow) {
     this->gameWindow = gameWindow;
 }
 
-void Player::setFigure(Figure figure)
-{
-    this->figure = figure;
-}
+void Player::setFigure(Figure figure) { this->figure = figure; }
 
-Figure Player::getFigure()
-{
-    return this->figure;
-}
-
-Step Player::findOptimalMove(Cell *gameField, bool isBotMove)
-{
-    Step bestMove;
-    isBotMove ? bestMove.score = -10 : bestMove.score = 10;
-    Result result = gameWindow->checkResult(*gameWindow, gameField);
-
-    if (result.winner != Winner::Unknown)
-    {
-        bestMove.score = (int)result.winner;
-        return bestMove;
-    }
-    
-    for (int i = 0; i < 9; i++)
-    {
-        if (gameField[i].figure == Figure::Empty)
-        {
-            Cell newField[9];
-            gameWindow->copyArray(gameField, newField);
-            newField[i].figure = isBotMove ? gameWindow->getEnemyFigure() : gameWindow->getPlayerFigure();
-
-            if (isBotMove)
-            {
-                Step currentMove = findOptimalMove(newField, false);
-                if (currentMove.score > bestMove.score)
-                {
-                    bestMove.score = currentMove.score;
-                    bestMove.pos = i;
-                }
-            }
-            else
-            {
-                Step currentMove = findOptimalMove(newField, true);
-                if (currentMove.score < bestMove.score)
-                {
-                    bestMove.score = currentMove.score;
-                    bestMove.pos = i;
-                }
-            }
-        }
-    }
-    return bestMove;
-}
+Figure Player::getFigure() { return this->figure; }
