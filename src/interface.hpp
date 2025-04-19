@@ -1,6 +1,7 @@
 #pragma once
 
 #include <SFML/Graphics.hpp>
+#include <cstring>
 
 using namespace sf;
 
@@ -152,8 +153,11 @@ class Player {
     void setGameWindow(GameWindow *gameWindow);
     void setFigure(Figure figure);
     Figure getFigure();
+    void setName(std::string name);
+    std::string getName();
 
    protected:
     GameWindow *gameWindow;
     Figure figure;
+    std::string name;
 };

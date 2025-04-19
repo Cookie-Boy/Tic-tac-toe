@@ -1,5 +1,3 @@
-#include <SFML/Graphics.hpp>
-#include <cstring>
 #include <interface.hpp>
 
 // Interface
@@ -451,3 +449,7 @@ void Player::setGameWindow(GameWindow* gameWindow) {
 void Player::setFigure(Figure figure) { this->figure = figure; }
 
 Figure Player::getFigure() { return this->figure; }
+
+void Player::setName(std::string name) { this->name = name; }
+
+std::string Player::getName() { return this->name; }

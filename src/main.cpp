@@ -1,11 +1,13 @@
 #include <locale.h>
 #include <time.h>
 #include <unistd.h>
-
 #include <SFML/Graphics.hpp>
-#include <interface.hpp>
 #include <memory>
+
+#include <interface.hpp>
 #include <network.hpp>
+#include <name_window.hpp>
+#include <chat_window.hpp>
 
 class GameController {
    public:
@@ -20,6 +22,7 @@ class GameController {
     }
 
     void run() {
+        chatWindow_.setPlayerName(processNameWindow());
         while (window_->isOpen()) {
             processEvents();
             update();
@@ -34,6 +37,7 @@ class GameController {
     StartWindow startWindow_;
     GameWindow gameWindow_;
     ResultWindow resultWindow_;
+    ChatWindow chatWindow_;
 
     Player player_;
     Player enemy_;
@@ -42,6 +46,22 @@ class GameController {
     Move currentMove_ = Move::Waiting;
     Result gameResult_;
     std::vector<std::string> ipList_;
+
+    std::string processNameWindow() {
+        NameInputWindow nameInput;
+        while (window_->isOpen() && !nameInput.isFinished()) {
+            sf::Event event;
+            while (window_->pollEvent(event)) {
+                if (event.type == sf::Event::Closed)
+                    window_->close();
+                nameInput.handleEvent(event);
+            }
+            window_->clear();
+            nameInput.render(*window_);
+            window_->display();
+        }
+        return nameInput.getPlayerName();
+    }
 
     // Event processing
     void processEvents() {
@@ -54,6 +74,16 @@ class GameController {
                 return;
             }
 
+            if (chatWindow_.isActive()) {
+                chatWindow_.handleEvent(event);
+                return;
+            }
+                
+            if (event.type == sf::Event::KeyPressed && event.key.code == sf::Keyboard::C) {
+                chatWindow_.setActive(true);
+                return;
+            }
+            
             handleMouseEvents(event, mousePos);
         }
     }
@@ -269,7 +299,9 @@ class GameController {
     void render() {
         window_->clear(sf::Color(20, 189, 172, 255));
 
-        if (startWindow_.isActive()) {
+        if (chatWindow_.isActive()) {
+            chatWindow_.render(*window_);
+        } else if (startWindow_.isActive()) {
             renderStartWindow();
         } else if (gameWindow_.isActive()) {
             renderGameWindow();
@@ -359,6 +391,8 @@ class GameController {
             resultWindow_.setWaitText("1/2 players ready...");
         } else if (networkManager_.getSocket() == -1) {
             resultWindow_.setWaitText("Opponent disconnected.");
+        } else {
+            resultWindow_.setWaitText("0/2 players ready...");
         }
     }
 };
